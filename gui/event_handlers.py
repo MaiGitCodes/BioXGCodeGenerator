@@ -8,10 +8,10 @@ Complete event handlers for BIOX G-Code Generator
 import numpy as np
 from tkinter import messagebox, filedialog
 import customtkinter as ctk
-from .core.gcode import GCODE as GC
-from .core.gcode import clean_printhead
-from .core.templates import set_template
-from .gui.validation import validate_inputs, validate_input_fields
+from ..core.gcode import GCODE as GC
+from ..core.gcode import clean_printhead
+from ..core.templates import set_template
+from ..gui.validation import validate_inputs, validate_input_fields
 
 def setup_event_handlers(root, components):
     """Configure all event handlers and callbacks"""
