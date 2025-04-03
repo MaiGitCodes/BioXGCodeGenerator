@@ -6,9 +6,9 @@ Main application entry point for BIOX G-Code
 @author: Maria Teresa Alameda Felgueiras
 """
 import customtkinter as ctk
-from gui.layout import create_main_window
-from gui.event_handlers import setup_event_handlers
-from utils.constants import APP_TITLE, DEFAULT_MODE, DEFAULT_COLOR
+from .gui.layout import create_main_window
+from .gui.event_handlers import setup_event_handlers
+from .utils.constants import APP_TITLE, DEFAULT_MODE, DEFAULT_COLOR
 
 def main():
     
