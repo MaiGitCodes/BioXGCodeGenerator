@@ -48,3 +48,7 @@ pip install -e .
 
 # Install dependencies (in case Numpy or Customtkinter are not installed)
 pip install -r requirements.txt
+
+# To execute the application, for example in Spyder:
+from BioXGCodeGenerator import main
+main.main()
