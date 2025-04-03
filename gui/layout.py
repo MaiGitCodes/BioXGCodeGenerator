@@ -7,7 +7,7 @@ Complete GUI layout definition for BIOX G-Code Generator
 """
 
 import customtkinter as ctk
-from .utils.constants import (PRINTHEAD_DEFAULT, PRINTHEAD_TYPES, 
+from ..utils.constants import (PRINTHEAD_DEFAULT, PRINTHEAD_TYPES, 
                              TEMPLATE_PROPERTIES)
 
 def create_main_window(root):
