@@ -40,7 +40,7 @@ A specialized application for generating G-code scripts for Cellink BIOX bioprin
 ### Setup
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/bio_x_gcode_generator.git
+git clone https://github.com/MaiGitCodes/BioXGCodeGenerator.git
 cd bio_x_gcode_generator
 
 # Install dependencies
