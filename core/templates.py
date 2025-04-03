@@ -4,7 +4,7 @@ Template management for BIOX G-Code Generator
 
 @author: Maria Teresa Alameda Felgueiras
 """
-from utils.constants import TEMPLATE_PROPERTIES
+from ..utils.constants import TEMPLATE_PROPERTIES
 
 def set_template(template_name, gcode):
     """
