@@ -7,7 +7,7 @@ Complete input validation for BIOX G-Code Generator
 """
 import customtkinter as ctk
 from tkinter import messagebox  # Add this import
-from .utils.constants import (BED_TEMP_LIMITS, PH_TEMP_LIMITS)
+from ..utils.constants import (BED_TEMP_LIMITS, PH_TEMP_LIMITS)
 
 def validate_inputs(components):
     """
