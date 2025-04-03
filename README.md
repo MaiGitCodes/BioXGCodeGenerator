@@ -41,7 +41,10 @@ A specialized application for generating G-code scripts for Cellink BIOX bioprin
 ```bash
 # Clone the repository
 git clone https://github.com/MaiGitCodes/BioXGCodeGenerator.git
+# Enter in the folder of the cloned repository
 cd bio_x_gcode_generator
+# Install the files in the repository
+pip install -e .
 
-# Install dependencies
+# Install dependencies (in case Numpy or Customtkinter are not installed)
 pip install -r requirements.txt
