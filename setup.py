@@ -15,7 +15,7 @@ setup(
     description="G-code generator for Cellink BIOX bioprinters",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/bio_x_gcode_generator",
+    url="https://github.com/MaiGitCodes/BioXGCodeGenerator.git",
     packages=find_packages(),
     install_requires=[
         "customtkinter>=5.2.0",
