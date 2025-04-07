@@ -13,7 +13,7 @@ setup(
     version="1.3.0",
     author="Maria Teresa Alameda Felgueiras",
     description="G-code generator for Cellink BIOX bioprinters",
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding='utf-8').read(),
     long_description_content_type="text/markdown",
     url="https://github.com/MaiGitCodes/BioXGCodeGenerator.git",
     packages=find_packages(),
