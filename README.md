@@ -39,6 +39,11 @@ A specialized application for generating G-code scripts for Cellink BIOX bioprin
 
 ### Setup
 ```bash
+# In conda, install git (if using anaconda, recomended):
+conda install -c anaconda git
+# Or, with pip, install gitpyton:
+pip install gitpython
+
 # Clone the repository
 git clone https://github.com/MaiGitCodes/BioXGCodeGenerator.git
 # Enter in the folder of the cloned repository
@@ -50,5 +55,5 @@ pip install -e .
 pip install -r requirements.txt
 
 # To execute the application, for example in Spyder:
-from BioXGCodeGenerator import main
-main.main()
+import BioXGCodeGenerator as bgc
+bgc.main()
