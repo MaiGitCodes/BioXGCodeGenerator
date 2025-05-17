@@ -11,41 +11,67 @@ from utils.constants import (PRINTHEAD_DEFAULT, PRINTHEAD_TYPES,
                              TEMPLATE_PROPERTIES)
 
 def create_main_window(root):
-    """Create and configure all GUI components"""
+    """Create main window"""
     
     components = {'root' : root}
     
+    # Create tab container
+    tabview = ctk.CTkTabview(root)
+    tabview.pack(expand = True, fill = 'both', padx = 5, pady = 5)
+    
+    # Add tabs
+    tab_droplet = tabview.add('Droplet settings')
+    tab_scafold = tabview.add('Scafold settings')
+    
+    # Configure main tab grid
+    tab_droplet.grid_columnconfigure(0, weight=1)
+    
+    # Create tab droplet 
+    create_droplet_tab(tab_droplet, components)
+    
+    # Create scafold tab
+    create_scafold_tab(tab_scafold, components)
+    
+    return components
+    
+def create_droplet_tab(parent, components):
+    """Create and configure all GUI components in droplet tab"""
+    
     # Row 0: Printhead and Template selection
-    components.update(create_printhead_section(root, row=0))
-    components.update(create_template_section(root, row=0, column=4))
+    components.update(create_printhead_section(parent, row=0))
+    components.update(create_template_section(parent, row=0, column=4))
     
     # Row 1: General Settings
-    components.update(create_general_settings(root, row=1))
+    components.update(create_general_settings(parent, row=1))
     
     # Row 2: Layer and Cleaning Settings
-    components.update(create_layer_settings(root, row=2))
+    components.update(create_layer_settings(parent, row=2))
     
     # Row 3: Temperature Control Frame
-    components.update(create_temperature_section(root, row=3))
+    components.update(create_temperature_section(parent, row=3))
     
     # Row 4: Sweep Options Frame
-    components.update(create_sweep_options(root, row=4))
+    components.update(create_sweep_options(parent, row=4))
     
     # Row 5: G-code Display Label
-    ctk.CTkLabel(root, text="Generated G-code:").grid(
+    ctk.CTkLabel(parent, text="Generated G-code:").grid(
         row=5, column=0, columnspan=6, padx=5, pady=5, sticky="w")
     
     # Row 6: G-code Text Display
-    components.update(create_gcode_display(root, row=6))
+    components.update(create_gcode_display(parent, row=6))
     
     # Row 7: Action Buttons
-    components.update(create_action_buttons(root, row=7))
+    components.update(create_action_buttons(parent, row=7))
     
     return components
 
-def create_printhead_section(root, row):
+def create_scafold_tab(parent, components):
+    
+    return
+
+def create_printhead_section(parent, row):
     """Create printhead type and number selection"""
-    frame = ctk.CTkFrame(root)
+    frame = ctk.CTkFrame(parent)
     frame.grid(row=row, column=0, columnspan=4, padx=5, pady=5, sticky="ew")
     
     # Printhead Type
@@ -77,9 +103,9 @@ def create_printhead_section(root, row):
         'printhead_number_menu': printhead_number_menu
     }
 
-def create_template_section(root, row, column):
+def create_template_section(parent, row, column):
     """Create template selection dropdown"""
-    frame = ctk.CTkFrame(root)
+    frame = ctk.CTkFrame(parent)
     frame.grid(row=row, column=column, columnspan=2, padx=5, pady=5, sticky="ew")
     
     ctk.CTkLabel(frame, text="Multi-well Template:").grid(row=0, column=0, padx=5, pady=5)
@@ -98,9 +124,9 @@ def create_template_section(root, row, column):
         'template_menu': template_menu
     }
 
-def create_general_settings(root, row):
+def create_general_settings(parent, row):
     """Create general print settings section"""
-    frame = ctk.CTkFrame(root)
+    frame = ctk.CTkFrame(parent)
     frame.grid(row=row, column=0, columnspan=6, padx=5, pady=5)
     
     # Pressure Setting
@@ -131,9 +157,9 @@ def create_general_settings(root, row):
         'layer_height_entry': layer_height_entry,
     }
 
-def create_layer_settings(root, row):
+def create_layer_settings(parent, row):
     """Create layer height and cleaning settings"""
-    frame = ctk.CTkFrame(root)
+    frame = ctk.CTkFrame(parent)
     frame.grid(row=row, column=0, columnspan=6, padx=5, pady=5)
     
     # Bed Z Position
@@ -168,9 +194,9 @@ def create_layer_settings(root, row):
         'clean_printhead_checkbox': clean_printhead_checkbox
     }
 
-def create_temperature_section(root, row):
+def create_temperature_section(parent, row):
     """Create temperature control frame"""
-    frame = ctk.CTkFrame(root, border_width=2, border_color="#ADD8E6")
+    frame = ctk.CTkFrame(parent, border_width=2, border_color="#ADD8E6")
     frame.grid(row=row, column=0, columnspan=6, padx=10, pady=5)
     
     # Printhead Temperature
@@ -218,9 +244,9 @@ def create_temperature_section(root, row):
         'control_bedtemperature_checkbox': control_bedtemperature_checkbox
     }
 
-def create_sweep_options(root, row):
+def create_sweep_options(parent, row):
     """Create sweep options frame"""
-    frame = ctk.CTkFrame(root, border_width=2, border_color="#ff9999")
+    frame = ctk.CTkFrame(parent, border_width=2, border_color="#ff9999")
     frame.grid(row=row, column=0, columnspan=6, padx=10, pady=5)
     
     components = {}
@@ -359,9 +385,9 @@ def create_time_sweep_section(frame, row):
         'extrusion_time_final_entry': extrusion_time_final_entry
     }
 
-def create_gcode_display(root, row):
+def create_gcode_display(parent, row):
     """Create G-code display area with scrollbar"""
-    frame = ctk.CTkFrame(root)
+    frame = ctk.CTkFrame(parent)
     frame.grid(row=row, column=0, columnspan=6, padx=5, pady=5, sticky="nsew")
     
     gcode_text = ctk.CTkTextbox(frame, width=80, height=300, wrap=ctk.NONE)
@@ -372,9 +398,9 @@ def create_gcode_display(root, row):
         'gcode_frame': frame
     }
 
-def create_action_buttons(root, row):
+def create_action_buttons(parent, row):
     """Create action buttons at the bottom"""
-    frame = ctk.CTkFrame(root)
+    frame = ctk.CTkFrame(parent)
     frame.grid(row=row, column=0, columnspan=6, padx=5, pady=5, sticky="ew")
     
     # Toggle Dark Mode
