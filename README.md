@@ -1,5 +1,5 @@
 # BIOX G-Code Generator
-# v1.3.0
+# v1.3.1
 # Author: Maria Teresa Alameda Felgueiras
 A specialized application for generating G-code scripts for Cellink BIOX bioprinters, supporting multiple printhead types and well plate configurations.
 
