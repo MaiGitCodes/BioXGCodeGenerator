@@ -185,14 +185,25 @@ def create_layer_settings(parent, row):
         text="Clean printhead first",
         variable=clean_printhead_var
     )
-    clean_printhead_checkbox.grid(row=0, column=4, columnspan=2, padx=5, pady=5)
+    clean_printhead_checkbox.grid(row=1, column=0, columnspan=3, padx=5, pady=5)
+    
+    # Terminate current operation
+    terminate_operation_var = ctk.BooleanVar(value=True)
+    terminate_operation_checkbox = ctk.CTkCheckBox(
+        frame,
+        text="Terminate operation",
+        variable=terminate_operation_var)
+    terminate_operation_checkbox.grid(row=1, column=1, columnspan=3, padx=5, pady=5)
     
     return {
         'bed_zpos_entry': bed_zpos_entry,
         'printhead_speed_entry': printhead_speed_entry,
         'clean_printhead_var': clean_printhead_var,
-        'clean_printhead_checkbox': clean_printhead_checkbox
+        'clean_printhead_checkbox': clean_printhead_checkbox,
+        'terminate_operation_checkbox': terminate_operation_checkbox
     }
+
+
 
 def create_temperature_section(parent, row):
     """Create temperature control frame"""

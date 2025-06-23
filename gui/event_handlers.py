@@ -276,7 +276,13 @@ def generate_gcode(components):
     if components['control_bedtemperature_var'].get() and not any_sweep_active:
         gcode += "M800 ; Turn off bed heating\n"
         
-    gcode += "M84 ; Disable motors\n"
+    gcode += "G0 Z50; move bed to parking position\n"
+    gcode += "M400; wait for bed to reach parking position\n"
+    if components['terminate_operation_checkbox'].get():
+        gcode += "M84 ; Disable motors\n"
+    else:
+        gcode += "; Current operation not terminated to maintain conditions\n"
+        gcode += "; Don't forget to terminate operation manually when finished\n"
 
     # Display generated G-code
     components['gcode_text'].delete("1.0", ctk.END)
