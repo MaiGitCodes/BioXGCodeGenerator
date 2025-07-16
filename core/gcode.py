@@ -22,13 +22,15 @@ class GCODE:
             
         gcode += "G21 ; set units to millimeters\n"
         gcode += "G90 ; use absolute coordinates\n"
-        gcode += "M83 ; use relative distances for extrusion\n"
+        gcode += "M83 ; use relative distances for extrusion\n\n"
         
         return gcode
     
     @staticmethod
-    def set_printhead(gcode, printhead = 0):
-        gcode += f"T{printhead} ; set printhead number {printhead}\n\n"
+    def set_printhead(gcode, printhead = 0, z = None):
+        gcode += f"T{printhead}" 
+        if z is not None: gcode += f" Z{z:.2f}"
+        gcode +=f" ; set printhead number {printhead}\n\n"
         return gcode
     
     @staticmethod
@@ -64,26 +66,35 @@ class GCODE:
         return gcode
     
     @staticmethod
-    def move_to_position(gcode, x = 0, y = 0, z = None, 
-                         speed = None, row = None, col = None):
+    def move_to_position(gcode, x = None, y = None, z = None, 
+                         speed = None, row = None, col = None,
+                         precise = 0, wait = True, extrusion = None):
         
         speed = float(speed)
         
-        gcode += f"G0 X{x} Y{y}"
+        gcode += f"G{precise}"
         
-        if z is not None: gcode += f" Z{z}"
+        if x is not None: gcode += f" X{x:.3f}"
+        if y is not None: gcode += f" Y{y:.3f}"
+        
+        if z is not None: gcode += f" Z{z:.2f}"
+        if extrusion is not None: gcode += f" E{extrusion}"
         if speed is not None: gcode +=  f" F{speed}"
         
-        gcode += f" ; Move to X{x} Y{y}"
+        if extrusion is None: gcode += " ; Move to"
+        else: gcode += " ; Extruding to"
         
-        if z is not None: gcode += f" Z{z}"
-        if speed is not None: gcode +=  f" with speed {speed} mm/s"
+        if x is not None: gcode += f" X{x:.3f}"
+        if y is not None: gcode += f" Y{y:.3f}"
+        
+        if z is not None: gcode += f" Z{z:.2f}"
+        if speed is not None: gcode +=  f" with speed {speed} mm/min"
         else: gcode += " with default speed"
          
         if row is not None and col is not None:
             gcode += f" well ({row+1}, {col+1})"
         
-        gcode += "\nM400 ; wait for queued moves to finish" 
+        if wait: gcode += "\nM400 ; wait for queued moves to finish" 
         
         return gcode + "\n\n"
     
@@ -184,6 +195,173 @@ class GCODE:
         gcode += (f"M750 T{printhead} P{pressure} D{time};" 
                   f" EMD extrusion for {time} seconds\n\n")
         
+        return gcode
+    
+    @staticmethod
+    def generate_scafold_perimeter(gcode, dimensions, origin, extrusion, 
+                                   layers = 1, speed = 1200):
+        
+        """
+        Appends G-code to draw a rectangular perimeter starting from 'origin'.
+        
+        Parameters:
+        - gcode: str, initial G-code string to append to.
+        - dimensions: tuple (width, height), the rectangle's size in mm.
+        - origin: tuple (x, y), starting point of the perimeter.
+        - extrusion: float, amount of extrusion per side (assumed fixed).
+        - speed: int, movement speed in mm/min (default: 1200).
+        
+        Returns:
+        - Updated gcode string with perimeter moves.
+        """
+        
+        gcode += f"; printing external perimeter at speed {speed} mm/min\n"
+        
+        # Set the feedrate (movement speed for extrusion moves)
+        gcode += f"G1 F{speed}; set extrusion speed movement to {speed} mm/min\n"
+            
+        
+        for i in range(4):
+            
+            # Current position
+            x0, y0 = origin
+            
+            # Compute quadrant
+            angle = np.arctan2(y0, x0)
+            quadrant = int((angle/(np.pi/2)) % 4 + 1)
+            
+            # Choose direction of movement depending on quadrant
+            if quadrant == 1: deltax , deltay = - dimensions[0] , 0
+            elif quadrant == 2: deltax , deltay = 0 , - dimensions[1]
+            elif quadrant == 3: deltax , deltay = dimensions[0] , 0
+            elif quadrant == 4: deltax , deltay = 0, dimensions[0]
+            
+            # Append G-code move and extrusion
+            gcode += (f"G1 X{x0 + deltax} Y{y0 + deltay} E{extrusion}; " +
+                      f"move to point ({x0 + deltax} , {y0 + deltay}) mm\n")
+            
+            # Update origin value for next perimeter side
+            origin = x0 + deltax , y0 + deltay
+            
+        return gcode
+                
+    @classmethod
+    def generate_scaffold_stripes(cls, gcode, dimensions, origin,
+                                  delta, lines, height, speed = 1200, 
+                                  extrusion = 0.94):
+        
+        xi , yi = origin
+        
+        for index in range(lines - 1):
+            
+            xi -= delta
+            
+            gcode = cls.move_to_position(gcode, x = xi, y = yi, wait = False,
+                                         precise = 1, speed = 3000)
+            
+            gcode = cls.move_to_position(gcode, z = height, speed = 3000, 
+                                         precise = 1, wait = False)
+            
+            gcode = cls.move_to_position(gcode, x=xi, y=-yi, wait = False,
+                                         precise = 1, extrusion = extrusion,
+                                         speed = speed)
+            
+            gcode = cls.move_to_position(gcode, z = height + 1, speed = 3000,
+                                         precise = 1, wait = False)
+            
+        return gcode         
+        
+        
+    @staticmethod
+    def generate_honeycomb_scaffold(gcode = None, 
+                                    size_x=20, size_y=20, size_z=10, 
+                                    wall_thickness=0.43, cell_size=5, 
+                                    layer_height=0.3, print_speed=10, 
+                                    printhead=0, pressure=50):
+        """
+        Generate honeycomb scaffold G-code for a 3D cube.
+        
+        Parameters:
+        - size_x, size_y, size_z: Dimensions in mm (default 20×20×10mm)
+        - wall_thickness: Extrusion width (default 0.43mm)
+        - cell_size: Distance between hexagon centers (default 5mm)
+        - layer_height: Z-step per layer (default 0.3mm)
+        - print_speed: Movement speed (default 10mm/s)
+        - printhead: Printhead number (default 0)
+        - pressure: Extrusion pressure (default 50kPa)
+        """
+        if gcode is None: gcode = ""
+        
+        # Calculate honeycomb parameters
+        hex_radius = cell_size / (3**0.5)  # Radius of circumscribed circle
+        hex_side = cell_size / (3**0.5)    # Side length
+        
+        # Initialize printer settings
+        gcode = GCODE.initialize()
+        gcode = GCODE.set_printhead(gcode, printhead)
+        gcode = GCODE.set_printhead_speed(gcode, print_speed)
+        gcode = GCODE.set_default_pressure(gcode, pressure, printhead)
+        
+        # Generate layers
+        z_pos = layer_height  # Start at first layer height
+        while z_pos <= size_z:
+            gcode += f"; LAYER at Z{z_pos:.2f}\n"
+            
+            # Move to start position
+            start_x = -size_x/2
+            start_y = -size_y/2
+            gcode = GCODE.move_to_position(gcode, x=start_x, y=start_y, z=z_pos, 
+                                           speed=print_speed)
+            
+            # Generate honeycomb pattern for this layer
+            # Offset every other row for hexagonal packing
+            row_offset = 0
+            y_pos = start_y
+            
+            while y_pos < size_y/2:
+                x_pos = start_x + (row_offset * hex_radius)
+                
+                while x_pos < size_x/2:
+                    # Generate one hexagon
+                    hex_points = []
+                    for i in range(6):
+                        angle_deg = 60 * i - 30
+                        angle_rad = np.pi / 180 * angle_deg
+                        x = x_pos + hex_radius * np.cos(angle_rad)
+                        y = y_pos + hex_radius * np.sin(angle_rad)
+                        hex_points.append((x, y))
+                    
+                    # Close the hexagon
+                    hex_points.append(hex_points[0])
+                    
+                    # Generate G-code for this hexagon
+                    for i, (x, y) in enumerate(hex_points):
+                        if i == 0:
+                            # Move to first point without extrusion
+                            gcode = GCODE.move_to_position(gcode, x=x, y=y, z=z_pos, 
+                                                         speed=print_speed)
+                            # Start extrusion
+                            gcode = GCODE.pneumatic_extrusion(gcode, printhead, 
+                                                            pressure, dwell=0.1)
+                        else:
+                            # Extrude to next point
+                            gcode = GCODE.move_to_position(gcode, x=x, y=y, z=z_pos, 
+                                                         speed=print_speed)
+                    
+                    # Stop extrusion
+                    gcode += f"M751 T{printhead} ; Stop extrusion\n"
+                    
+                    x_pos += 2 * hex_radius
+                
+                # Alternate row offset and increment y
+                row_offset = 1 - row_offset
+                y_pos += 1.5 * hex_side
+            
+            # Move to next layer
+            z_pos += layer_height
+        
+        # Finalize
+        gcode += "; Scaffold complete\n"
         return gcode
     
 

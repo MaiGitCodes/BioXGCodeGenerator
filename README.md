@@ -1,6 +1,7 @@
 # BIOX G-Code Generator
-# v1.3.1
+# v1.3.5
 # Author: Maria Teresa Alameda Felgueiras
+
 A specialized application for generating G-code scripts for Cellink BIOX bioprinters, supporting multiple printhead types and well plate configurations.
 
 ## Features
@@ -26,10 +27,19 @@ A specialized application for generating G-code scripts for Cellink BIOX bioprin
   - Layer height adjustment
   - Printhead cleaning routine
 
+- 🧱 **Scaffold Structure Generator** (🔧 *Beta*):
+  - Generate stripped scaffold patterns across multiple layers
+  - Current version includes support for linear scaffolds (e.g., striped/gridded)
+  - Other geometries like honeycomb and circular are planned but not yet implemented
+
+- 🧊 **3D Visualization**:
+  - Interactive window for 3D preview of scaffold structures
+  - Rotate, zoom, and inspect the generated paths before printing
+
 - 📁 **Output Options**:
   - Generate G-code preview
   - Copy to clipboard
-  - Export to .gcode file
+  - Export to `.gcode` file
 
 ## Installation
 
@@ -39,11 +49,10 @@ A specialized application for generating G-code scripts for Cellink BIOX bioprin
 
 ### Setup
 ```bash
-# In conda, install git (if using anaconda, recomended):
+# In conda, install git (if using anaconda, recommended):
 conda install -c anaconda git
-# Or, with pip, install gitpyton:
+# Or, with pip, install gitpython:
 pip install gitpython
-
 # Clone the repository
 git clone https://github.com/MaiGitCodes/BioXGCodeGenerator.git
 # Enter in the folder of the cloned repository
