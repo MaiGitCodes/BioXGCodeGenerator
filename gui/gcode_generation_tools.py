@@ -16,31 +16,18 @@ from .validation import validate_inputs
 
 def generate_scafold_gcode(components):
     
-    printhead_type_value = components['printhead_type'].get()
+    printhead_type = components['printhead_type'].get()
     printhead_number = int(components['printhead_number'].get())
     
-    
-    # components.update({
-    #     'scaffold_pattern_var': pattern_var,
-    #     'scaffold_size_x_entry': size_x_entry,
-    #     'scaffold_size_y_entry': size_y_entry,
-    #     'scaffold_cell_size_entry': cell_size_entry,
-    #     'scaffold_wall_thickness_entry': wall_thickness_entry,
-    #     'scaffold_layer_height_entry': layer_height_entry,
-    #     'layer_number_entry': layer_number_entry,
-    #     'scaffold_preview_button': preview_button,
-    #     'scaffold_fig': fig,
-    #     'scaffold_ax': ax,
-    #     'scaffold_canvas': canvas
-    # })
-    
+    pattern = components['scaffold_pattern_var'].get()
+    extrusion = float(components['scaffold_extrusion_entry'].get())
     height = float(components['scaffold_layer_height_entry'].get())
     speed = float(components['scaffold_speed_entry'].get())
         
     dimensions, origin, extrusion = calculate_geometric_parameters(components)
     lines, delta = calculate_lines(components)
     
-    gcode = GC.initialize(printhead_type_value=printhead_type_value)
+    gcode = GC.initialize(printhead_type_value = printhead_type, pattern = pattern)
     
     gcode = GC.set_printhead(gcode, printhead_number, z = height)
     
@@ -55,8 +42,6 @@ def generate_scafold_gcode(components):
     
     gcode = GC.generate_scaffold_stripes(gcode, dimensions, origin,
                                          delta, lines, height, speed = speed)
-    
-    
     
     # Display generated G-code
     components['gcode_text'].delete("1.0", ctk.END)
@@ -306,7 +291,7 @@ def calculate_geometric_parameters(components):
     
     return dimensions, origin, extrusion
 
-def calculate_lines(components, pattern = 'striped'):
+def calculate_lines(components, pattern = 'stripped'):
     
     infill = float(components['scaffold_infill_entry'].get())
     deltax = float(components['scaffold_size_x_entry'].get())
@@ -315,15 +300,43 @@ def calculate_lines(components, pattern = 'striped'):
         
     dimensions = (deltax - extrusion, deltay - extrusion)
     
-    efective_area = dimensions[0] * dimensions[1] * infill / 100
+    infill_area = dimensions[0] * dimensions[1] * infill / 100
     
-    line_area = extrusion * dimensions[1]
+    if pattern == 'stripped':
+        
+        line_area = extrusion * dimensions[1]
+        
+        number_of_lines = round(infill_area / line_area)
+        
+        delta = dimensions[0] / number_of_lines
+        
+        return number_of_lines, delta
     
-    number_of_lines = round(efective_area / line_area)
+    elif pattern == 'grid':
+        
+        number_of_cells = calculate_cells(infill, extrusion, infill_area)
+        number_of_lines = round(np.sqrt(number_of_cells))
+        
+        print(f'Number of lines is {number_of_lines} lines')
+        
+        delta = dimensions[0] / number_of_lines
+        
+        return number_of_lines, delta
     
-    delta = dimensions[0] / number_of_lines
+
+def calculate_cells(infill, extrusion, infill_area):
     
-    return number_of_lines, delta
+    infill /= 100
+    
+    unit_cell_side =  2 * extrusion + np.sqrt((2 * extrusion) ** 2 - 4 * infill * extrusion ** 2 )
+    
+    unit_cell_side /= (2 * infill)
+    
+    n = infill_area / unit_cell_side ** 2
+    
+    return n
+    
+
     
     
     

@@ -11,15 +11,20 @@ class GCODE:
     "class GCODE stores methods/functions to generate small sections of gcode"
     
     @staticmethod
-    def initialize(printhead_type_value = None):
+    def initialize(printhead_type_value = None, pattern = None):
         
         gcode = ""
 
         # Initialization commands
         gcode += "; Code beginning\n\n"
+        
+        if pattern is not None:
+            if pattern.lower() == 'striped': gcode += "; Striped scaffold pattern.\n"
+            elif pattern.lower() == 'grid': gcode += "; Grid scaffold pattern.\n"
+            
         if printhead_type_value is not None:
             gcode += f"; {printhead_type_value} printhead selected \n\n"
-            
+    
         gcode += "G21 ; set units to millimeters\n"
         gcode += "G90 ; use absolute coordinates\n"
         gcode += "M83 ; use relative distances for extrusion\n\n"

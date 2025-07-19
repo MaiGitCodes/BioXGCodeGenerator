@@ -8,7 +8,7 @@ Complete GUI layout definition for BIOX G-Code Generator
 
 import customtkinter as ctk
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from utils.constants import (PRINTHEAD_DEFAULT, PRINTHEAD_TYPES, 
                              TEMPLATE_PROPERTIES)
 
@@ -26,17 +26,17 @@ def create_main_window(root):
     components['tabview'] = tabview
     
     # Add tabs
-    tab_droplet = tabview.add('Droplet settings')
-    tab_scafold = tabview.add('Scafold settings')
+    tab_main = tabview.add('Main settings')
+    tab_scafold = tabview.add('Scaffold settings')
     
     # Configure main tab grid
-    tab_droplet.grid_columnconfigure(0, weight=1)
+    tab_main.grid_columnconfigure(0, weight=1)
     
     # Create tab droplet 
-    create_droplet_tab(tab_droplet, components)
+    create_main_tab(tab_main, components)
     
     # Create scafold tab
-    create_scafold_tab(tab_scafold, components)
+    create_scaffold_tab(tab_scafold, components)
     
     # Create shared components
     create_shared_elements(main_frame, components)
@@ -57,7 +57,7 @@ def create_shared_elements(parent, components):
     
     return components
 
-def create_droplet_tab(parent, components):
+def create_main_tab(parent, components):
     """Create and configure all GUI components in droplet tab"""
     
     
@@ -79,7 +79,7 @@ def create_droplet_tab(parent, components):
         
     return components
 
-def create_scafold_tab(parent, components):
+def create_scaffold_tab(parent, components):
     """Create and configure all GUI components in scaffold tab"""
     # Main container frame
     main_frame = ctk.CTkFrame(parent)
@@ -98,11 +98,11 @@ def create_scafold_tab(parent, components):
     
     # Pattern Type
     ctk.CTkLabel(params_frame, text="Pattern:").pack(pady=(10,0))
-    pattern_var = ctk.StringVar(value="Honeycomb")
+    pattern_var = ctk.StringVar(value="Grid")
     pattern_menu = ctk.CTkOptionMenu(
         params_frame,
         variable=pattern_var,
-        values=["Honeycomb", "Grid", "Triangular"],
+        values=["Grid", "Striped", "Honeycomb"],
         width=150
     )
     pattern_menu.pack(pady=5)
@@ -137,29 +137,35 @@ def create_scafold_tab(parent, components):
     infill_entry.insert(0, "50")
     infill_entry.grid(row=0, column=1, padx=5)
     
-    # Wall Thickness
+    # Noozle size --> Wall Thickness
     ctk.CTkLabel(cell_frame, text="Noozle (mm):").grid(row=1, column=0, padx=5)
     noozle_entry = ctk.CTkEntry(cell_frame, width=60)
     noozle_entry.insert(0, "0.41")
     noozle_entry.grid(row=1, column=1, padx=5)
     
+    # Extrusion parameter (ammount of extruded material deposited in a movement)
+    ctk.CTkLabel(cell_frame, text="Extrusion (mL):").grid(row=2, column=0, padx=5)
+    extrusion_entry = ctk.CTkEntry(cell_frame, width=60)
+    extrusion_entry.insert(0, "1")
+    extrusion_entry.grid(row=2, column=1, padx=5)
+    
     # Layer Height
-    ctk.CTkLabel(cell_frame, text="Layer Height (mm):").grid(row=2, column=0, padx=5)
+    ctk.CTkLabel(cell_frame, text="Layer Height (mm):").grid(row=3, column=0, padx=5)
     layer_height_entry = ctk.CTkEntry(cell_frame, width=60)
     layer_height_entry.insert(0, "1")
-    layer_height_entry.grid(row=2, column=1, padx=5)
+    layer_height_entry.grid(row=3, column=1, padx=5)
     
     # Number of layers
-    ctk.CTkLabel(cell_frame, text="Number of Layers:").grid(row=3, column=0, padx=5)
+    ctk.CTkLabel(cell_frame, text="Number of Layers:").grid(row=4, column=0, padx=5)
     layer_number_entry = ctk.CTkEntry(cell_frame, width=60)
-    layer_number_entry.insert(0, "4")
-    layer_number_entry.grid(row=3, column=1, padx=5)
+    layer_number_entry.insert(0, "2")
+    layer_number_entry.grid(row=4, column=1, padx=5)
     
     # Number of layers
-    ctk.CTkLabel(cell_frame, text="Speed (mm/min):").grid(row=4, column=0, padx=5)
+    ctk.CTkLabel(cell_frame, text="Speed (mm/min):").grid(row=5, column=0, padx=5)
     speed_entry = ctk.CTkEntry(cell_frame, width=60)
     speed_entry.insert(0, "1200")
-    speed_entry.grid(row=4, column=1, padx=5)
+    speed_entry.grid(row=5, column=1, padx=5)
     
     # Preview Button
     preview_button = ctk.CTkButton(
@@ -167,6 +173,20 @@ def create_scafold_tab(parent, components):
         text="Preview Scaffold"
     )
     preview_button.pack(pady=20)
+    
+    export_preview_button = ctk.CTkButton(
+        params_frame,
+        text="Export as PNG"
+    )
+    export_preview_button.pack(pady=5)
+    
+    show_axes_var = ctk.BooleanVar(value=True)
+    show_axes_checkbox = ctk.CTkCheckBox(
+        params_frame,
+        text="Show Axes and Grid",
+        variable=show_axes_var
+    )
+    show_axes_checkbox.pack(pady=5)
         
     # Create 3D visualization area
     fig = Figure(figsize=(6, 6), dpi=150)
@@ -177,6 +197,10 @@ def create_scafold_tab(parent, components):
     canvas = FigureCanvasTkAgg(fig, master=viz_frame)
     canvas_widget = canvas.get_tk_widget()
     canvas_widget.pack(fill='both', expand=True)
+    toolbar = NavigationToolbar2Tk(canvas, viz_frame)
+    toolbar.update()
+    toolbar.pack(fill='x', padx=5, pady=(0, 5))
+
     
     components.update({
         'scaffold_pattern_var': pattern_var,
@@ -184,10 +208,13 @@ def create_scafold_tab(parent, components):
         'scaffold_size_y_entry': size_y_entry,
         'scaffold_infill_entry': infill_entry,
         'scaffold_noozle_entry': noozle_entry,
+        'scaffold_extrusion_entry': extrusion_entry,
         'scaffold_layer_height_entry': layer_height_entry,
         'layer_number_entry': layer_number_entry,
         'scaffold_speed_entry': speed_entry,
         'scaffold_preview_button': preview_button,
+        'scaffold_export_button': export_preview_button,
+        'show_axes_var': show_axes_var,
         'scaffold_fig': fig,
         'scaffold_ax': ax,
         'scaffold_canvas': canvas

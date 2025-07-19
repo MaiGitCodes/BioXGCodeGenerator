@@ -43,7 +43,7 @@ def setup_event_handlers(root, components):
     
     # Scaffold preview button
     components['scaffold_preview_button'].configure(
-        command=lambda: preview_scaffold_perimeter(components)
+        command=lambda: preview_scaffold(components)
     )
     
     # Temperature control checkboxes
@@ -59,6 +59,10 @@ def setup_event_handlers(root, components):
         "w", lambda *args: toggle_sweep_options("temperature", components))
     components['extrusion_time_sweep_var'].trace(
         "w", lambda *args: toggle_sweep_options("extrusion_time", components))
+    
+    components['scaffold_export_button'].configure(
+    command=lambda: export_preview_image(components)
+    )
     
     # Input validation bindings
     for entry in [components['printhead_speed_entry'], 
@@ -107,6 +111,21 @@ def export_gcode(components):
             messagebox.showinfo("Success", "G-code exported successfully.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to export G-code: {e}")
+            
+def export_preview_image(components):
+    """Save the current scaffold preview as a PNG file"""
+    file_path = filedialog.asksaveasfilename(
+        defaultextension=".png",
+        filetypes=[("PNG Image", "*.png")],
+        title="Save Scaffold Preview"
+    )
+    if file_path:
+        try:
+            components['scaffold_fig'].savefig(file_path, dpi=300)
+            messagebox.showinfo("Success", "Preview saved successfully.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save preview: {e}")
+
 
 def copy_to_clipboard(components):
     """Copy G-code to clipboard"""
@@ -329,12 +348,12 @@ def toggle_sweep_options_based_on_template(components):
 # Define callback for tab switching
 def on_tab_change(components):
     selected_tab = components['tabview'].get()
-    scafold_view = (selected_tab == 'Scafold settings')
+    scafold_view = (selected_tab == 'Scaffold settings')
     print(scafold_view)
     # Optional: print(components['scafold'])  # for debugging
     return scafold_view
 
-def preview_scaffold_perimeter(components):
+def preview_scaffold(components):
     try:
         pattern = components['scaffold_pattern_var'].get()
         size_x = float(components['scaffold_size_x_entry'].get())
@@ -352,10 +371,23 @@ def preview_scaffold_perimeter(components):
     ax.clear()
     plot_origin(ax)
     plot_perimeter(ax, size_x, size_y, size_z, layer_height)
-    plot_stripe_infill(ax, components)
+    if pattern.lower() == 'striped': plot_stripe_infill(ax, components)
+    elif pattern.lower() == 'grid': plot_grid_infill(ax, components)
+    
+    if components['show_axes_var'].get():
+        ax.set_xlabel("X (mm)")
+        ax.set_ylabel("Y (mm)")
+        ax.set_zlabel("Z (mm)")
+        ax.grid(True)
+        ax.set_axis_on()
+    else:
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        ax.set_zlabel("")
+        ax.grid(False)
+        ax.set_axis_off()
     components['scaffold_canvas'].draw()
 
-    
     
     
 def preview_scaffold_3d(components):
@@ -397,7 +429,7 @@ def preview_scaffold_3d(components):
     
 def plot_origin(ax):
     
-    ax.scatter(0.,0.,0., color = 'black', marker='x', s=50)
+    ax.scatter(0.,0.,0., color = 'black', marker='x', s=20)
 
 def plot_perimeter(ax, size_x, size_y, size_z, layer_height, cmap='plasma',
                    steps_per_segment = 5):
@@ -453,7 +485,10 @@ def plot_stripe_infill(ax, components, cmap = 'plasma', steps_per_segment = 5):
     from mpl_toolkits.mplot3d.art3d import Line3DCollection
     from matplotlib import cm
     from matplotlib.colors import Normalize
-
+    
+    layer_height = float(components['scaffold_layer_height_entry'].get())
+    size_z = float(components['layer_number_entry'].get()) * layer_height
+        
     lines, delta = calculate_lines(components)
     dimensions, origin, extrusion = calculate_geometric_parameters(components)
     
@@ -469,17 +504,80 @@ def plot_stripe_infill(ax, components, cmap = 'plasma', steps_per_segment = 5):
         color_norm = Normalize(0, total_segments)
         cmap_func = cm.get_cmap(cmap)
 
-        segment_index = 0
-        # Interpolate small steps along this segment
-        for t in np.linspace(0, 1, steps_per_segment + 1)[:-1]:
-            p1 = np.array([xi, yi, 0.])
-            p2 = np.array([xi, -yi, 0.])
-            start = p1 * (1 - t) + p2 * t
-            end = p1 * (1 - (t + 1 / steps_per_segment)) + p2 * (t + 1 / steps_per_segment)
-            segments.append([start, end])
-            colors.append(cmap_func(color_norm(segment_index)))
-            segment_index += 1
+
+        for z in np.arange(0, size_z, layer_height):
+            segment_index = 0
+            # Interpolate small steps along this segment
+            for t in np.linspace(0, 1, steps_per_segment + 1)[:-1]:
+                p1 = np.array([xi, yi, z])
+                p2 = np.array([xi, -yi, z])
+                start = p1 * (1 - t) + p2 * t
+                end = p1 * (1 - (t + 1 / steps_per_segment)) + p2 * (t + 1 / steps_per_segment)
+                segments.append([start, end])
+                colors.append(cmap_func(color_norm(segment_index)))
+                segment_index += 1
             
+            collection = Line3DCollection(segments, colors=colors, linewidth=extrusion)
+            ax.add_collection3d(collection)
+        
+def plot_grid_infill(ax, components, cmap = 'plasma', steps_per_segment = 5):
+    
+    from mpl_toolkits.mplot3d.art3d import Line3DCollection
+    from matplotlib import cm
+    from matplotlib.colors import Normalize
+    
+    lines, delta = calculate_lines(components, pattern = 'grid')
+    dimensions, origin, extrusion = calculate_geometric_parameters(components)
+    
+    xi , yi = origin
+    
+    extrusion = float(components['scaffold_extrusion_entry'].get())
+    layer_height = float(components['scaffold_layer_height_entry'].get())
+    size_z = float(components['layer_number_entry'].get()) * layer_height
+    
+    color_norm = Normalize(0, (lines - 1))
+    cmap_func = cm.get_cmap(cmap)
+    
+    for index in range(lines - 1):
+        
+        xi -= delta
+        segments = []
+        colors = []
+
+        for z in np.arange(0, size_z, layer_height):
+            segment_index = 0
+            # Interpolate small steps along this segment
+            for t in np.linspace(0, 1, steps_per_segment + 1)[:-1]:
+                p1 = np.array([xi, yi, z])
+                p2 = np.array([xi, -yi, z])
+                start = p1 * (1 - t) + p2 * t
+                end = p1 * (1 - (t + 1 / steps_per_segment)) + p2 * (t + 1 / steps_per_segment)
+                segments.append([start, end])
+                segment_index += 1
+                
+        collection = Line3DCollection(segments, colors=cmap_func(color_norm(index)), linewidth=extrusion)
+        ax.add_collection3d(collection)
+        
+    xi , yi = origin
+        
+    for index in range(lines - 1):
+        
+        yi -= delta
+        segments = []
+        colors = []
+        
+        for z in np.arange(0, size_z, layer_height):
+            segment_index = 0
+            # Interpolate small steps along this segment
+            for t in np.linspace(0, 1, steps_per_segment + 1)[:-1]:
+                p1 = np.array([xi, yi, z])
+                p2 = np.array([-xi, yi, z])
+                start = p1 * (1 - t) + p2 * t
+                end = p1 * (1 - (t + 1 / steps_per_segment)) + p2 * (t + 1 / steps_per_segment)
+                segments.append([start, end])
+                colors.append(cmap_func(color_norm(segment_index)))
+                segment_index += 1
+                
         collection = Line3DCollection(segments, colors=colors, linewidth=extrusion)
         ax.add_collection3d(collection)
     
