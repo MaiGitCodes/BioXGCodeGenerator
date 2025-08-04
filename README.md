@@ -1,5 +1,5 @@
 # BIOX G-Code Generator
-# v1.3.7
+# v1.3.8
 # Author: Maria Teresa Alameda Felgueiras
 
 A specialized application for generating G-code scripts for Cellink BIOX bioprinters, supporting multiple printhead types and well plate configurations.
@@ -54,12 +54,14 @@ A specialized application for generating G-code scripts for Cellink BIOX bioprin
 ```bash
 # In conda, install git (if using anaconda, recommended):
 conda install -c anaconda git
+
 # Or, with pip, install gitpython:
 pip install gitpython
+
 # Clone the repository
 git clone https://github.com/MaiGitCodes/BioXGCodeGenerator.git
 # Enter in the folder of the cloned repository
-cd bio_x_gcode_generator
+cd BioXGCodeGenerator
 # Install the files in the repository
 pip install -e .
 

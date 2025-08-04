@@ -362,6 +362,14 @@ class GCODE:
         """
     
         return gcode
+    
+    @staticmethod
+    def introduce_comment(gcode, comment: str):
+        
+        gcode += "; " + f"{comment}\n"
+        
+        return gcode
+        
 
 def clean_printhead(gcode, printhead_number, speed, bed_movement_position,
                     pressure = 50, time = 1):

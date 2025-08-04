@@ -23,6 +23,7 @@ def generate_scaffold_gcode(components):
     extrusion = float(components['scaffold_extrusion_entry'].get())
     height = float(components['scaffold_layer_height_entry'].get())
     speed = float(components['scaffold_speed_entry'].get())
+    layers = int(components['layer_number_entry'].get())
         
     dimensions, origin, extrusion = calculate_geometric_parameters(components)
     lines, delta = calculate_lines(components)
@@ -30,24 +31,30 @@ def generate_scaffold_gcode(components):
     gcode = GC.initialize(printhead_type_value = printhead_type, pattern = pattern)
     
     gcode = GC.set_printhead(gcode, printhead_number, z = height)
-    
-    gcode = GC.move_to_position(gcode, z = height + 1, speed = 3000, precise = 1)
-    gcode = GC.move_to_position(gcode, x = origin[0], y = origin[1], speed = 3000, precise = 1)
-    gcode = GC.move_to_position(gcode, z = height, speed = 3000, precise = 1)
-    
-    gcode = GC.generate_scafold_perimeter(gcode, dimensions, origin, extrusion, height,
-                                          speed = speed)
-    
-    gcode = GC.move_to_position(gcode, z = height + 1, speed = 3000, precise = 1)
-    
-    if pattern.lower() == 'striped':
-        gcode = GC.generate_striped_scaffold(gcode, dimensions, origin,
-                                         delta, lines, height, speed = speed)
-    elif pattern.lower() == 'grid':
-         gcode = GC.generate_grid_scaffold(gcode, dimensions, origin,
-                                          delta, lines, height, speed = speed)
-    else:
-        pass
+        
+    for layer in range(layers):
+        
+        layer_height = (layer + 1) * height
+        gcode = GC.introduce_comment(gcode, f"Printing layer at height {layer_height} mm")
+        
+        gcode = GC.move_to_position(gcode, z = layer_height + 1, speed = 3000, precise = 1)
+        gcode = GC.move_to_position(gcode, x = origin[0], y = origin[1], speed = 3000, precise = 1)
+        gcode = GC.move_to_position(gcode, z = layer_height, speed = 3000, precise = 1)
+                
+        gcode = GC.generate_scafold_perimeter(gcode, dimensions, origin, extrusion, layer_height,
+                                              speed = speed)
+        
+        gcode = GC.move_to_position(gcode, z = layer_height + 1, speed = 3000, precise = 1)
+        
+        if pattern.lower() == 'striped':
+            gcode = GC.generate_striped_scaffold(gcode, dimensions, origin,
+                                             delta, lines, layer_height, speed = speed)
+        elif pattern.lower() == 'grid':
+             gcode = GC.generate_grid_scaffold(gcode, dimensions, origin,
+                                              delta, lines, layer_height, speed = speed)
+        else:
+            pass
+        
     
     gcode = GC.terminate(gcode, components)
     
