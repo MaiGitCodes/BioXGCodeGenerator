@@ -6,20 +6,13 @@ Complete event handlers for BIOX G-Code Generator
 @author: Maria Teresa Alameda Felgueiras
 """
 import numpy as np
-import math
 from tkinter import messagebox, filedialog
 import customtkinter as ctk
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
-from ..core.gcode import GCODE as GC
-from ..core.gcode import clean_printhead
-from ..core.templates import set_template
 from ..gui.validation import validate_inputs, validate_input_fields
 from .gcode_generation_tools import (generate_droplet_gcode,
-                                     generate_scafold_gcode,
+                                     generate_scaffold_gcode,
                                      calculate_geometric_parameters,
-                                     calculate_lines)
+                                     calculate_lines, calculate_honeycomb_lines)
 
 def setup_event_handlers(root, components):
     """Configure all event handlers and callbacks"""
@@ -89,7 +82,7 @@ def generate_gcode(components):
         print('droplet')
         generate_droplet_gcode(components)
     else:
-        generate_scafold_gcode(components)
+        generate_scaffold_gcode(components)
         # components['gcode_text'].delete("1.0", ctk.END)
         print('Scafold')    
 
@@ -356,8 +349,8 @@ def on_tab_change(components):
 def preview_scaffold(components):
     try:
         pattern = components['scaffold_pattern_var'].get()
-        size_x = float(components['scaffold_size_x_entry'].get())
-        size_y = float(components['scaffold_size_y_entry'].get())
+        size_x = float(components['scaffold_size_entry'].get())
+        size_y = float(components['scaffold_size_entry'].get())
         infill = float(components['scaffold_infill_entry'].get())
         wall_thickness = float(components['scaffold_noozle_entry'].get())
         layer_height = float(components['scaffold_layer_height_entry'].get())
@@ -373,6 +366,9 @@ def preview_scaffold(components):
     plot_perimeter(ax, size_x, size_y, size_z, layer_height)
     if pattern.lower() == 'striped': plot_stripe_infill(ax, components)
     elif pattern.lower() == 'grid': plot_grid_infill(ax, components)
+    elif pattern.lower() == 'honeycomb':
+        print('hi')
+        plot_honeycomb_infill(ax, components)
     
     if components['show_axes_var'].get():
         ax.set_xlabel("X (mm)")
@@ -388,45 +384,6 @@ def preview_scaffold(components):
         ax.set_axis_off()
     components['scaffold_canvas'].draw()
 
-    
-    
-def preview_scaffold_3d(components):
-    """Generate and display a 3D preview of the scaffold pattern"""
-    # Get parameters from UI
-    try:
-        pattern = components['scaffold_pattern_var'].get()
-        size_x = float(components['scaffold_size_x_entry'].get())
-        size_y = float(components['scaffold_size_y_entry'].get())
-        cell_size = float(components['scaffold_cell_size_entry'].get())
-        wall_thickness = float(components['scaffold_wall_thickness_entry'].get())
-        layer_height = float(components['scaffold_layer_height_entry'].get())
-        size_z = float(components['layer_number_entry'].get()) * layer_height
-    except ValueError:
-        messagebox.showerror("Error", "Please enter valid numeric values")
-        return
-    
-    # Clear previous plot
-    ax = components['scaffold_ax']
-    ax.clear()
-    
-    # Set plot limits
-    ax.set_xlim([-size_x/2, size_x/2])
-    ax.set_ylim([-size_y/2, size_y/2])
-    ax.set_zlim([0, size_z])
-    ax.set_box_aspect([size_x, size_y, size_z])
-    
-    # Generate and plot the scaffold
-    if pattern == "Honeycomb":
-        plot_honeycomb_3d(ax, size_x, size_y, size_z, cell_size, wall_thickness, layer_height)
-    elif pattern == "Grid":
-        plot_grid_3d(ax, size_x, size_y, size_z, cell_size, wall_thickness, layer_height)
-    elif pattern == "Triangular":
-        plot_triangular_3d(ax, size_x, size_y, size_z, cell_size, wall_thickness, layer_height)
-    
-    # Set title and refresh
-    ax.set_title(f"{pattern} Scaffold\nDimensions: {size_x}x{size_y}x{size_z}mm", y=1.0, pad=-20)
-    components['scaffold_canvas'].draw()
-    
 def plot_origin(ax):
     
     ax.scatter(0.,0.,0., color = 'black', marker='x', s=20)
@@ -485,25 +442,24 @@ def plot_stripe_infill(ax, components, cmap = 'plasma', steps_per_segment = 5):
     from mpl_toolkits.mplot3d.art3d import Line3DCollection
     from matplotlib import cm
     from matplotlib.colors import Normalize
-    
-    layer_height = float(components['scaffold_layer_height_entry'].get())
-    size_z = float(components['layer_number_entry'].get()) * layer_height
         
     lines, delta = calculate_lines(components)
     dimensions, origin, extrusion = calculate_geometric_parameters(components)
     
+    extrusion = float(components['scaffold_extrusion_entry'].get())
+    layer_height = float(components['scaffold_layer_height_entry'].get())
+    size_z = float(components['layer_number_entry'].get()) * layer_height
+    
     xi , yi = origin
-        
+    
+    color_norm = Normalize(0, (lines - 1))
+    cmap_func = cm.get_cmap(cmap)
+    
     for index in range(lines - 1):
         
         xi -= delta
         segments = []
         colors = []
-
-        total_segments = (lines - 1)  * steps_per_segment
-        color_norm = Normalize(0, total_segments)
-        cmap_func = cm.get_cmap(cmap)
-
 
         for z in np.arange(0, size_z, layer_height):
             segment_index = 0
@@ -517,8 +473,8 @@ def plot_stripe_infill(ax, components, cmap = 'plasma', steps_per_segment = 5):
                 colors.append(cmap_func(color_norm(segment_index)))
                 segment_index += 1
             
-            collection = Line3DCollection(segments, colors=colors, linewidth=extrusion)
-            ax.add_collection3d(collection)
+        collection = Line3DCollection(segments, colors=cmap_func(color_norm(index)), linewidth=extrusion)
+        ax.add_collection3d(collection)
         
 def plot_grid_infill(ax, components, cmap = 'plasma', steps_per_segment = 5):
     
@@ -581,378 +537,83 @@ def plot_grid_infill(ax, components, cmap = 'plasma', steps_per_segment = 5):
         collection = Line3DCollection(segments, colors=colors, linewidth=extrusion)
         ax.add_collection3d(collection)
     
-def plot_honeycomb_3d(ax, size_x, size_y, size_z, cell_size, wall_thickness, layer_height):
-    """Plot a 3D honeycomb scaffold"""
-    hex_radius = cell_size / (3**0.5)
-    hex_side = cell_size / (3**0.5)
+def plot_honeycomb_infill(ax, components, cmap='plasma'):
+    from mpl_toolkits.mplot3d.art3d import Line3DCollection
+    from matplotlib import cm
+    from matplotlib.colors import Normalize
     
-    # Calculate number of cells
-    rows = int(size_y / (1.5 * hex_side))
-    cols = int(size_x / (2 * hex_radius))
+    lines, delta = calculate_lines(components, pattern='honeycomb')
+    dimensions, origin, extrusion = calculate_geometric_parameters(components)
     
-    # Generate layers
-    for z in np.arange(0, size_z, layer_height):
-        # Offset every other row for hexagonal packing
-        row_offset = 0 if (z/layer_height) % 2 == 0 else 1
+    xi, yi = origin
+    extrusion_width = float(components['scaffold_extrusion_entry'].get())
+    layer_height = float(components['scaffold_layer_height_entry'].get())
+    layers = int(float(components['layer_number_entry'].get()))
+    
+    # Honeycomb parameters
+    hex_spacing = delta
+    hex_radius = hex_spacing / np.sqrt(3)
+    hex_side = hex_spacing / np.sqrt(3)
+    
+    # Calculate bounds with extrusion margin
+    x_min = -dimensions[0]/2 + extrusion/2
+    x_max = dimensions[0]/2 - extrusion/2
+    y_min = -dimensions[1]/2 + extrusion/2
+    y_max = dimensions[1]/2 - extrusion/2
+    
+    color_norm = Normalize(0, layers-1)
+    cmap_func = cm.get_cmap(cmap)
+    
+    for layer in range(layers):
+        z = layer * layer_height
+        row_offset = layer % 2
+        segments = []
         
-        for row in range(-rows, rows):
-            for col in range(-cols, cols):
-                x = (col * 2 * hex_radius) + (row_offset * hex_radius)
-                y = row * 1.5 * hex_side
+        # Calculate number of complete hexagons that fit
+        rows = int((y_max - y_min) / (1.5 * hex_side)) + 1
+        cols = int((x_max - x_min) / (hex_side * np.sqrt(3))) + 1
+        
+        for row in range(-rows, rows+1):
+            for col in range(-cols, cols+1):
+                # Calculate center position with offset for even rows
+                x_center = col * hex_side * np.sqrt(3)
+                if row % 2 == 1:
+                    x_center += hex_side * np.sqrt(3)/2
+                y_center = row * 1.5 * hex_side
                 
-                # Check if within bounds
-                if abs(x) > size_x/2 or abs(y) > size_y/2:
+                # Skip if center is outside bounds
+                if not (x_min <= x_center <= x_max and y_min <= y_center <= y_max):
                     continue
                 
-                # Generate hexagon points
-                points = []
-                for i in range(7):  # 6 sides + close loop
-                    angle_deg = 60 * i - 30
-                    angle_rad = np.pi / 180 * angle_deg
-                    px = x + hex_radius * np.cos(angle_rad)
-                    py = y + hex_radius * np.sin(angle_rad)
-                    points.append([px, py])
-                
-                # Plot vertical walls
+                # Generate hexagon vertices
+                vertices = []
                 for i in range(6):
-                    ax.plot(
-                        [points[i][0], points[i+1][0]],
-                        [points[i][1], points[i+1][1]],
-                        [z, z],
-                        color='blue',
-                        linewidth=wall_thickness*2
-                    )
+                    angle = np.radians(60 * i + 30)
+                    x = x_center + hex_radius * np.cos(angle)
+                    y = y_center + hex_radius * np.sin(angle)
+                    vertices.append((x, y, z))
                 
-                # Plot horizontal connections if not first layer
-                if z > 0:
-                    for i in range(6):
-                        ax.plot(
-                            [points[i][0], points[i][0]],
-                            [points[i][1], points[i][1]],
-                            [z-layer_height, z],
-                            color='blue',
-                            linewidth=wall_thickness*2
-                        )
-
-def plot_grid_3d(ax, size_x, size_y, size_z, cell_size, wall_thickness, layer_height):
-    """Plot a 3D grid scaffold"""
-    # Calculate number of cells
-    rows = int(size_y / cell_size)
-    cols = int(size_x / cell_size)
-    
-    # Generate layers
-    for z in np.arange(0, size_z, layer_height):
-        for row in range(-rows, rows):
-            for col in range(-cols, cols):
-                x = col * cell_size
-                y = row * cell_size
+                # Only draw 3 sides per hexagon
+                sides_to_draw = [(0,1), (1,2), (2,3)] if layer % 2 == 0 else [(3,4), (4,5), (5,0)]
                 
-                # Check if within bounds
-                if abs(x) > size_x/2 or abs(y) > size_y/2:
-                    continue
-                
-                # Plot vertical lines
-                ax.plot(
-                    [x, x + cell_size],
-                    [y, y],
-                    [z, z],
-                    color='green',
-                    linewidth=wall_thickness*2
-                )
-                ax.plot(
-                    [x, x],
-                    [y, y + cell_size],
-                    [z, z],
-                    color='green',
-                    linewidth=wall_thickness*2
-                )
-                
-                # Plot horizontal connections if not first layer
-                if z > 0:
-                    ax.plot(
-                        [x, x],
-                        [y, y],
-                        [z-layer_height, z],
-                        color='green',
-                        linewidth=wall_thickness*2
-                    )
-
-def plot_triangular_3d(ax, size_x, size_y, size_z, cell_size, wall_thickness, layer_height):
-    """Plot a 3D triangular scaffold"""
-    # Calculate number of cells
-    rows = int(size_y / (cell_size * 0.866))  # 0.866 = sin(60°)
-    cols = int(size_x / cell_size)
-    
-    # Generate layers
-    for z in np.arange(0, size_z, layer_height):
-        # Alternate orientation every layer
-        orientation = 'up' if (z/layer_height) % 2 == 0 else 'down'
+                for start, end in sides_to_draw:
+                    x1, y1, z1 = vertices[start]
+                    x2, y2, z2 = vertices[end]
+                    
+                    # Clip to boundaries
+                    x1_clip = max(x_min, min(x_max, x1))
+                    y1_clip = max(y_min, min(y_max, y1))
+                    x2_clip = max(x_min, min(x_max, x2))
+                    y2_clip = max(y_min, min(y_max, y2))
+                    
+                    # Skip if line segment is completely outside
+                    if (x1_clip == x2_clip and y1_clip == y2_clip):
+                        continue
+                    
+                    segments.append([(x1_clip, y1_clip, z1), (x2_clip, y2_clip, z2)])
         
-        for row in range(-rows, rows):
-            for col in range(-cols, cols):
-                x = col * cell_size
-                y = row * cell_size * 0.866  # Vertical spacing
-                
-                # Offset every other column
-                if orientation == 'down':
-                    x += cell_size / 2
-                
-                # Check if within bounds
-                if abs(x) > size_x/2 or abs(y) > size_y/2:
-                    continue
-                
-                # Generate triangle points
-                if orientation == 'up':
-                    points = [
-                        [x, y],
-                        [x + cell_size/2, y + cell_size * 0.866],
-                        [x - cell_size/2, y + cell_size * 0.866]
-                    ]
-                else:
-                    points = [
-                        [x, y + cell_size * 0.866],
-                        [x + cell_size/2, y],
-                        [x - cell_size/2, y]
-                    ]
-                
-                # Plot triangle
-                for i in range(3):
-                    ax.plot(
-                        [points[i][0], points[(i+1)%3][0]],
-                        [points[i][1], points[(i+1)%3][1]],
-                        [z, z],
-                        color='red',
-                        linewidth=wall_thickness*2
-                    )
-                
-                # Plot vertical connections if not first layer
-                if z > 0:
-                    for i in range(3):
-                        ax.plot(
-                            [points[i][0], points[i][0]],
-                            [points[i][1], points[i][1]],
-                            [z-layer_height, z],
-                            color='red',
-                            linewidth=wall_thickness*2
-                        )
-
-  
-# def preview_scaffold_pattern(components):
-#     """Generate and display a preview of the scaffold pattern"""
-#     canvas = components['scaffold_canvas']
-#     canvas.delete("all")  # Clear previous drawing
-    
-#     # Get parameters from UI
-#     try:
-#         cell_size = float(components['scaffold_cell_size_entry'].get())
-#         wall_thickness = float(components['scaffold_wall_thickness_entry'].get())
-#         pattern = components['scaffold_pattern_var'].get()
-#     except ValueError:
-#         messagebox.showerror("Error", "Please enter valid numeric values")
-#         return
-    
-#     # Canvas dimensions
-#     width = canvas.winfo_width()
-#     height = canvas.winfo_height()
-#     scale = min(width, height) / (cell_size * 3)  # Scale to fit
-    
-#     # Draw based on pattern type
-#     if pattern == "Honeycomb":
-#         draw_honeycomb_pattern(canvas, cell_size, scale, width, height)
-#     elif pattern == "Grid":
-#         draw_grid_pattern(canvas, cell_size, scale, width, height)
-#     elif pattern == "Triangular":
-#         draw_triangular_pattern(canvas, cell_size, scale, width, height)
-        
-#     # Add scale indicator (1mm reference)
-#     draw_scale_indicator(canvas, scale, width, height)
-
-
-# def draw_scale_indicator(canvas, scale, width, height):
-#     """Draw a scale indicator (1mm reference) in the bottom right corner"""
-#     scale_length = 1 * scale  # 1mm in canvas units
-#     padding = 10  # pixels from edge
-    
-#     # Position at bottom right
-#     x_start = width - padding - scale_length
-#     y_pos = height - padding
-    
-#     # Draw the scale line
-#     canvas.create_line(
-#         x_start, y_pos,
-#         x_start + scale_length, y_pos,
-#         fill='red', width=2
-#     )
-    
-#     # Draw end markers
-#     marker_size = 5
-#     canvas.create_line(
-#         x_start, y_pos - marker_size,
-#         x_start, y_pos + marker_size,
-#         fill='red', width=2
-#     )
-#     canvas.create_line(
-#         x_start + scale_length, y_pos - marker_size,
-#         x_start + scale_length, y_pos + marker_size,
-#         fill='red', width=2
-#     )
-    
-#     # Add label
-#     canvas.create_text(
-#         x_start + scale_length/2, y_pos - 10,
-#         text="1 mm",
-#         fill='red',
-#         font=('Helvetica', 8, 'bold')
-#     )
-        
-# def draw_honeycomb_pattern(canvas, cell_size, scale, width, height):
-#     """Draw a honeycomb pattern preview with scale"""
-#     hex_radius = cell_size / (3**0.5)
-#     center_x, center_y = width/2, height/2
-    
-#     # Draw a single hexagon centered in the canvas
-#     points = []
-#     for i in range(6):
-#         angle_deg = 60 * i - 30
-#         angle_rad = np.pi / 180 * angle_deg
-#         x = center_x + hex_radius * scale * np.cos(angle_rad)
-#         y = center_y + hex_radius * scale * np.sin(angle_rad)
-#         points.extend([x, y])
-    
-#     canvas.create_polygon(points, outline='black', fill='', width=2)
-    
-#     # Draw neighboring hexagons to show the pattern
-#     for dx, dy in [(1, 0), (-1, 0), (0.5, 0.866), (-0.5, 0.866), 
-#                    (0.5, -0.866), (-0.5, -0.866)]:
-#         neighbor_points = []
-#         for i in range(6):
-#             angle_deg = 60 * i - 30
-#             angle_rad = np.pi / 180 * angle_deg
-#             x = center_x + (hex_radius * dx * 1.5 * scale + 
-#                            hex_radius * scale * np.cos(angle_rad))
-#             y = center_y + (hex_radius * dy * 1.5 * scale + 
-#                            hex_radius * scale * np.sin(angle_rad))
-#             neighbor_points.extend([x, y])
-        
-#         canvas.create_polygon(neighbor_points, outline='gray', fill='', width=1)
-    
-#     # Add dimension indicators for cell size
-#     draw_cell_dimension(canvas, center_x, center_y, hex_radius, scale, "honeycomb")
-
-# def draw_grid_pattern(canvas, cell_size, scale, width, height):
-#     """Draw a grid pattern preview with scale"""
-#     center_x, center_y = width/2, height/2
-#     half_size = cell_size * scale / 2
-    
-#     # Draw center square
-#     canvas.create_rectangle(
-#         center_x - half_size, center_y - half_size,
-#         center_x + half_size, center_y + half_size,
-#         outline='black', width=2
-#     )
-    
-#     # Draw neighboring squares
-#     for dx, dy in [(1,0), (-1,0), (0,1), (0,-1), (1,1), (-1,1), (1,-1), (-1,-1)]:
-#         canvas.create_rectangle(
-#             center_x + dx*cell_size*scale - half_size,
-#             center_y + dy*cell_size*scale - half_size,
-#             center_x + dx*cell_size*scale + half_size,
-#             center_y + dy*cell_size*scale + half_size,
-#             outline='gray', width=1
-#         )
-    
-#     # Add dimension indicators for cell size
-#     draw_cell_dimension(canvas, center_x, center_y, cell_size/2, scale, "grid")
-
-# def draw_triangular_pattern(canvas, cell_size, scale, width, height):
-#     """Draw a triangular pattern preview with scale"""
-#     center_x, center_y = width/2, height/2
-    
-#     # Draw center triangle
-#     points = []
-#     for i in range(3):
-#         angle_deg = 120 * i - 90
-#         angle_rad = np.pi / 180 * angle_deg
-#         x = center_x + cell_size * scale * np.cos(angle_rad)
-#         y = center_y + cell_size * scale * np.sin(angle_rad)
-#         points.extend([x, y])
-    
-#     canvas.create_polygon(points, outline='black', fill='', width=2)
-    
-#     # Draw neighboring triangles
-#     for dx, dy in [(1, 0), (-1, 0), (0.5, 0.866), (-0.5, 0.866), 
-#                    (0.5, -0.866), (-0.5, -0.866)]:
-#         neighbor_points = []
-#         for i in range(3):
-#             angle_deg = 120 * i - 90
-#             angle_rad = np.pi / 180 * angle_deg
-#             x = center_x + (cell_size * dx * scale + 
-#                            cell_size * scale * np.cos(angle_rad))
-#             y = center_y + (cell_size * dy * scale + 
-#                            cell_size * scale * np.sin(angle_rad))
-#             neighbor_points.extend([x, y])
-        
-#         canvas.create_polygon(neighbor_points, outline='gray', fill='', width=1)
-    
-#     # Add dimension indicators for cell size
-#     draw_cell_dimension(canvas, center_x, center_y, cell_size, scale, "triangular")
-
-# def draw_cell_dimension(canvas, center_x, center_y, size, scale, pattern_type):
-#     """Draw dimension indicators for the cell size"""
-#     color = 'blue'
-#     offset = 15
-    
-#     if pattern_type == "honeycomb":
-#         # Draw diameter of hexagon
-#         x1 = center_x - size * scale
-#         x2 = center_x + size * scale
-#         y = center_y + size * scale + offset
-        
-#         canvas.create_line(x1, y, x2, y, fill=color, width=1, arrow=ctk.BOTH)
-#         canvas.create_text(
-#             center_x, y + 10,
-#             text=f"{size*2:.1f} mm",
-#             fill=color,
-#             font=('Helvetica', 8)
-#         )
-        
-#     elif pattern_type == "grid":
-#         # Draw width of square
-#         x1 = center_x - size * scale
-#         x2 = center_x + size * scale
-#         y = center_y + size * scale + offset
-        
-#         canvas.create_line(x1, y, x2, y, fill=color, width=1, arrow=ctk.BOTH)
-#         canvas.create_text(
-#             center_x, y + 10,
-#             text=f"{size*2:.1f} mm",
-#             fill=color,
-#             font=('Helvetica', 8)
-#         )
-        
-#     elif pattern_type == "triangular":
-#         # Draw side length
-#         x1 = center_x
-#         y1 = center_y - size * scale
-#         x2 = center_x + size * scale * math.cos(math.radians(30))
-#         y2 = center_y + size * scale * math.sin(math.radians(30))
-        
-#         mid_x = (x1 + x2) / 2
-#         mid_y = (y1 + y2) / 2
-        
-#         # Calculate perpendicular offset
-#         angle = math.atan2(y2-y1, x2-x1) + math.pi/2
-#         offset_x = 10 * math.cos(angle)
-#         offset_y = 10 * math.sin(angle)
-        
-#         canvas.create_line(
-#             x1 + offset_x, y1 + offset_y,
-#             x2 + offset_x, y2 + offset_y,
-#             fill=color, width=1, arrow=ctk.BOTH
-#         )
-#         canvas.create_text(
-#             mid_x + offset_x * 1.5, mid_y + offset_y * 1.5,
-#             text=f"{size:.1f} mm",
-#             fill=color,
-#             font=('Helvetica', 8)
-#         )
+        # Create collection
+        collection = Line3DCollection(segments, 
+                                     colors=cmap_func(color_norm(layer)),
+                                     linewidth=extrusion_width)
+        ax.add_collection3d(collection)

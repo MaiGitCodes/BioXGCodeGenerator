@@ -10,7 +10,9 @@ import customtkinter as ctk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from utils.constants import (PRINTHEAD_DEFAULT, PRINTHEAD_TYPES, 
-                             TEMPLATE_PROPERTIES)
+                             TEMPLATE_PROPERTIES, SCAFFOLD_FRAME_COLOR,
+                             SCAFFOLD_BORDER_COLOR, SCAFFOLD_BORDER_LINE)
+
 
 def create_main_window(root):
     """Create main window"""
@@ -32,29 +34,39 @@ def create_main_window(root):
     # Configure main tab grid
     tab_main.grid_columnconfigure(0, weight=1)
     
-    # Create tab droplet 
+    # Create main tab
     create_main_tab(tab_main, components)
     
     # Create scafold tab
     create_scaffold_tab(tab_scafold, components)
+        
+    # Add bottom frame for shared elements (G-code display + buttons)
+    bottom_frame = ctk.CTkFrame(main_frame)
+    bottom_frame.pack(side='bottom', fill='x', padx=5, pady=5)
+    components['bottom_frame'] = bottom_frame
     
-    # Create shared components
-    create_shared_elements(main_frame, components)
+    # Create shared UI inside bottom frame
+    create_shared_elements(bottom_frame, components)
+    
     return components
 
 def create_shared_elements(parent, components):
-    
-   # G-code Display Label
-    ctk.CTkLabel(parent, text="Generated G-code:").pack(
+    # Top part: label + gcode display
+    gcode_frame = ctk.CTkFrame(parent)
+    gcode_frame.pack(fill='both', expand=True)
+
+    ctk.CTkLabel(gcode_frame, text="Generated G-code:").pack(
         padx=5, pady=(10, 0), anchor="w"
     )
-    
-    # Row 6: G-code Text Display
-    components.update(create_gcode_display(parent, row=6))
-    
-    # Row 7: Action Buttons
-    components.update(create_action_buttons(parent, row=7))
-    
+
+    components.update(create_gcode_display(gcode_frame))
+
+    # Bottom part: action buttons
+    buttons_frame = ctk.CTkFrame(parent)
+    buttons_frame.pack(fill='x', pady=5)
+
+    components.update(create_action_buttons(buttons_frame))
+
     return components
 
 def create_main_tab(parent, components):
@@ -96,40 +108,38 @@ def create_scaffold_tab(parent, components):
     # Scaffold Parameters
     ctk.CTkLabel(params_frame, text="Scaffold Parameters", font=('Helvetica', 14, 'bold')).pack(pady=10)
     
+    pattern_frame = ctk.CTkFrame(params_frame)
+    pattern_frame.pack(pady=5)
+    
     # Pattern Type
-    ctk.CTkLabel(params_frame, text="Pattern:").pack(pady=(10,0))
+    ctk.CTkLabel(pattern_frame, text="Pattern:").grid(row=0, column=0, padx=5)
     pattern_var = ctk.StringVar(value="Grid")
     pattern_menu = ctk.CTkOptionMenu(
-        params_frame,
+        pattern_frame,
         variable=pattern_var,
         values=["Grid", "Striped", "Honeycomb"],
-        width=150
+        width=120
     )
-    pattern_menu.pack(pady=5)
+    pattern_menu.grid(row=0, column=1, pady=5)
     
-    # Dimensions
-    ctk.CTkLabel(params_frame, text="Dimensions (mm):").pack(pady=(10,0))
+    # Frame size
+    ctk.CTkLabel(pattern_frame, text="Perimeter Size (mm):").grid(row=1, column=0, padx=5, pady = 10)
+    size_entry = ctk.CTkEntry(pattern_frame, width=60)
+    size_entry.insert(0, "50")
+    size_entry.grid(row=1, column=1, padx=5, pady=10)
     
-    dim_frame = ctk.CTkFrame(params_frame)
-    dim_frame.pack(pady=5)
-    
-    # X dimension
-    ctk.CTkLabel(dim_frame, text="X:").grid(row=0, column=0, padx=5)
-    size_x_entry = ctk.CTkEntry(dim_frame, width=60)
-    size_x_entry.insert(0, "50")
-    size_x_entry.grid(row=0, column=1, padx=5)
-    
-    # Y dimension
-    ctk.CTkLabel(dim_frame, text="Y:").grid(row=0, column=2, padx=5)
-    size_y_entry = ctk.CTkEntry(dim_frame, width=60)
-    size_y_entry.insert(0, "50")
-    size_y_entry.grid(row=0, column=3, padx=5)
+    # # Y dimension
+    # ctk.CTkLabel(dim_frame, text="Y:").grid(row=0, column=2, padx=5)
+    # size_y_entry = ctk.CTkEntry(dim_frame, width=60)
+    # size_y_entry.insert(0, "50")
+    # size_y_entry.grid(row=0, column=3, padx=5)
         
     # Cell Parameters
     ctk.CTkLabel(params_frame, text="General Parameters:").pack(pady=(10,0))
     
     cell_frame = ctk.CTkFrame(params_frame)
     cell_frame.pack(pady=5)
+    
     
     # Cell Size
     ctk.CTkLabel(cell_frame, text="Infill (%):").grid(row=0, column=0, padx=5)
@@ -150,35 +160,39 @@ def create_scaffold_tab(parent, components):
     extrusion_entry.grid(row=2, column=1, padx=5)
     
     # Layer Height
-    ctk.CTkLabel(cell_frame, text="Layer Height (mm):").grid(row=3, column=0, padx=5)
+    ctk.CTkLabel(cell_frame, text="Layer Height (mm):").grid(row=0, column=2, padx=5)
     layer_height_entry = ctk.CTkEntry(cell_frame, width=60)
     layer_height_entry.insert(0, "1")
-    layer_height_entry.grid(row=3, column=1, padx=5)
+    layer_height_entry.grid(row=0, column=3, padx=5)
     
     # Number of layers
-    ctk.CTkLabel(cell_frame, text="Number of Layers:").grid(row=4, column=0, padx=5)
+    ctk.CTkLabel(cell_frame, text="Number of Layers:").grid(row=1, column=2, padx=5)
     layer_number_entry = ctk.CTkEntry(cell_frame, width=60)
     layer_number_entry.insert(0, "2")
-    layer_number_entry.grid(row=4, column=1, padx=5)
+    layer_number_entry.grid(row=1, column=3, padx=5)
     
     # Number of layers
-    ctk.CTkLabel(cell_frame, text="Speed (mm/min):").grid(row=5, column=0, padx=5)
+    ctk.CTkLabel(cell_frame, text="Speed (mm/min):").grid(row=2, column=2, padx=5)
     speed_entry = ctk.CTkEntry(cell_frame, width=60)
     speed_entry.insert(0, "1200")
-    speed_entry.grid(row=5, column=1, padx=5)
+    speed_entry.grid(row=2, column=3, padx=5)
+    
+    # Plot options    
+    plot_options_frame = ctk.CTkFrame(params_frame)
+    plot_options_frame.pack(pady=5)
     
     # Preview Button
     preview_button = ctk.CTkButton(
-        params_frame,
+        plot_options_frame,
         text="Preview Scaffold"
     )
-    preview_button.pack(pady=20)
+    preview_button.grid(pady=5, padx=20, row = 0, column = 0)
     
     export_preview_button = ctk.CTkButton(
-        params_frame,
+        plot_options_frame,
         text="Export as PNG"
     )
-    export_preview_button.pack(pady=5)
+    export_preview_button.grid(pady=5, padx=20, row = 0, column = 1)
     
     show_axes_var = ctk.BooleanVar(value=True)
     show_axes_checkbox = ctk.CTkCheckBox(
@@ -199,13 +213,25 @@ def create_scaffold_tab(parent, components):
     canvas_widget.pack(fill='both', expand=True)
     toolbar = NavigationToolbar2Tk(canvas, viz_frame)
     toolbar.update()
-    toolbar.pack(fill='x', padx=5, pady=(0, 5))
-
+    toolbar.pack(fill='x', padx=(0, 0), pady=(0, 0))
     
+    
+    if ctk.get_appearance_mode() == "Light":
+        parent.configure(fg_color=SCAFFOLD_BORDER_COLOR,
+                         border_color=SCAFFOLD_BORDER_COLOR,
+                         border_width=SCAFFOLD_BORDER_LINE)
+        main_frame.configure(fg_color=SCAFFOLD_FRAME_COLOR,
+                             border_color=SCAFFOLD_BORDER_COLOR,
+                             border_width=SCAFFOLD_BORDER_LINE)
+        params_frame.configure(fg_color=SCAFFOLD_FRAME_COLOR)
+        pattern_frame.configure(fg_color=SCAFFOLD_FRAME_COLOR)
+        cell_frame.configure(fg_color=SCAFFOLD_FRAME_COLOR)
+        plot_options_frame.configure(fg_color=SCAFFOLD_FRAME_COLOR)
+
     components.update({
         'scaffold_pattern_var': pattern_var,
-        'scaffold_size_x_entry': size_x_entry,
-        'scaffold_size_y_entry': size_y_entry,
+        'scaffold_size_entry': size_entry,
+        # 'scaffold_size_y_entry': size_y_entry,
         'scaffold_infill_entry': infill_entry,
         'scaffold_noozle_entry': noozle_entry,
         'scaffold_extrusion_entry': extrusion_entry,
@@ -549,41 +575,38 @@ def create_time_sweep_section(frame, row):
         'extrusion_time_final_entry': extrusion_time_final_entry
     }
 
-def create_gcode_display(parent, row):
+def create_gcode_display(parent):
     """Create G-code display area with scrollbar"""
     frame = ctk.CTkFrame(parent)
-    frame.pack(fill='both', expand=False, padx=5, pady=5)
-    
-    gcode_text = ctk.CTkTextbox(frame, width=80, height=300, wrap=ctk.NONE)
-    gcode_text.pack(side=ctk.LEFT, fill=ctk.BOTH, expand=True)
-    
+    frame.pack(fill='both', expand=True, padx=5, pady=5)
+
+    gcode_text = ctk.CTkTextbox(frame, height=200, wrap=ctk.NONE)
+    gcode_text.pack(fill='both', expand=True)
+
     return {
         'gcode_text': gcode_text,
         'gcode_frame': frame
     }
 
 
-def create_action_buttons(parent, row):
-    """Create action buttons at the bottom"""
+def create_action_buttons(parent, row=None):
     frame = ctk.CTkFrame(parent)
-    frame.pack(fill='both', expand=False, padx=5, pady=5)
-    
-    # Toggle Dark Mode
+    frame.pack(fill='x', padx=5, pady=5)
+
     dark_mode_button = ctk.CTkButton(frame, text="Toggle Dark Mode")
-    dark_mode_button.pack(side=ctk.LEFT, padx=5, pady=5)
-    
-    # Generate Button
+    dark_mode_button.pack(side=ctk.LEFT, padx=5)
+
     generate_button = ctk.CTkButton(frame, text="Generate G-code")
-    generate_button.pack(side=ctk.RIGHT, padx=5, pady=5)
-    
-    # Export Button
+    generate_button.pack(side=ctk.RIGHT, padx=5)
+
     export_button = ctk.CTkButton(frame, text="Export G-code")
-    export_button.pack(side=ctk.RIGHT, padx=5, pady=5)
-    
-    # Copy Button
+    export_button.pack(side=ctk.RIGHT, padx=5)
+
     copy_button = ctk.CTkButton(frame, text="Copy to Clipboard")
-    copy_button.pack(side=ctk.RIGHT, padx=5, pady=5)
+    copy_button.pack(side=ctk.RIGHT, padx=5)
     
+    # frame.configure(fg_color="white")
+
     return {
         'dark_mode_button': dark_mode_button,
         'generate_button': generate_button,

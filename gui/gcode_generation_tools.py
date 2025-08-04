@@ -14,7 +14,7 @@ from ..core.templates import set_template
 from .validation import validate_inputs
 
 
-def generate_scafold_gcode(components):
+def generate_scaffold_gcode(components):
     
     printhead_type = components['printhead_type'].get()
     printhead_number = int(components['printhead_number'].get())
@@ -40,8 +40,16 @@ def generate_scafold_gcode(components):
     
     gcode = GC.move_to_position(gcode, z = height + 1, speed = 3000, precise = 1)
     
-    gcode = GC.generate_scaffold_stripes(gcode, dimensions, origin,
+    if pattern.lower() == 'striped':
+        gcode = GC.generate_striped_scaffold(gcode, dimensions, origin,
                                          delta, lines, height, speed = speed)
+    elif pattern.lower() == 'grid':
+         gcode = GC.generate_grid_scaffold(gcode, dimensions, origin,
+                                          delta, lines, height, speed = speed)
+    else:
+        pass
+    
+    gcode = GC.terminate(gcode, components)
     
     # Display generated G-code
     components['gcode_text'].delete("1.0", ctk.END)
@@ -255,32 +263,18 @@ def generate_droplet_gcode(components):
             
             counter += 1
 
-    # End-of-print commands
-    if components['control_bedtemperature_var'].get() and not any_sweep_active:
-        gcode += "M800 ; Turn off bed heating\n"
-        
-    gcode += "G0 Z50; move bed to parking position\n"
-    gcode += "M400; wait for bed to reach parking position\n"
-    if components['terminate_operation_checkbox'].get():
-        gcode += "M84 ; Disable motors\n"
-    else:
-        gcode += "; Current operation not terminated to maintain conditions\n"
-        gcode += "; Don't forget to terminate operation manually when finished\n"
+    # Introduce termination commands
+    gcode = GC.terminate(gcode, components, any_sweep_active=any_sweep_active)
 
     # Display generated G-code
     components['gcode_text'].delete("1.0", ctk.END)
     components['gcode_text'].insert(ctk.END, gcode)
     
-# def generate_linear_infill(gcode, dimensions, infill = 0.5):
-    
-#     width, height = dimensions
-    
-#     spacing = extrussion_width / infill
     
 def calculate_geometric_parameters(components):
     
-    deltax = float(components['scaffold_size_x_entry'].get())
-    deltay = float(components['scaffold_size_y_entry'].get())
+    deltax = float(components['scaffold_size_entry'].get())
+    deltay = float(components['scaffold_size_entry'].get())
     extrusion = float(components['scaffold_noozle_entry'].get())
 
     
@@ -291,37 +285,46 @@ def calculate_geometric_parameters(components):
     
     return dimensions, origin, extrusion
 
-def calculate_lines(components, pattern = 'stripped'):
-    
+def calculate_lines(components, pattern='striped'):
     infill = float(components['scaffold_infill_entry'].get())
-    deltax = float(components['scaffold_size_x_entry'].get())
-    deltay = float(components['scaffold_size_y_entry'].get())
+    deltax = float(components['scaffold_size_entry'].get())
+    deltay = float(components['scaffold_size_entry'].get())
     extrusion = float(components['scaffold_noozle_entry'].get())
-        
+    
     dimensions = (deltax - extrusion, deltay - extrusion)
+    effective_size = deltax - extrusion 
     
-    infill_area = dimensions[0] * dimensions[1] * infill / 100
-    
-    if pattern == 'stripped':
-        
+    if pattern.lower() == 'striped':
         line_area = extrusion * dimensions[1]
-        
-        number_of_lines = round(infill_area / line_area)
-        
+        number_of_lines = round((dimensions[0] * dimensions[1] * infill/100) / line_area)
         delta = dimensions[0] / number_of_lines
-        
         return number_of_lines, delta
     
-    elif pattern == 'grid':
-        
-        number_of_cells = calculate_cells(infill, extrusion, infill_area)
-        number_of_lines = round(np.sqrt(number_of_cells))
-        
-        print(f'Number of lines is {number_of_lines} lines')
-        
+    elif pattern.lower() == 'grid':
+        line_area = extrusion * (dimensions[0] + dimensions[1])  # One horizontal and one vertical line
+        number_of_lines = round((dimensions[0] * dimensions[1] * infill/100) / line_area)
         delta = dimensions[0] / number_of_lines
-        
         return number_of_lines, delta
+    
+    elif pattern.lower() == 'honeycomb':
+        # Honeycomb-specific calculations
+        # Relationship between infill and wall length: infill = (wall_length * extrusion)/area
+        # For honeycomb, wall_length per unit area = (4 + 2√3)/(3√3 * s) where s is spacing
+        
+        # Calculate required spacing to achieve desired infill
+        spacing = (4 + 2*np.sqrt(3)) / (3*np.sqrt(3)) * extrusion / (infill/100)
+        
+        # Calculate number of complete hexagons that fit
+        hex_width = spacing * np.sqrt(3)  # width between opposite sides
+        hex_height = spacing * 2          # height between opposite vertices
+        
+        # Number of horizontal lines
+        n_horizontal = int((effective_size - extrusion) / (hex_height * 0.75)) + 1
+        
+        # Number of vertical lines (diagonals)
+        n_vertical = int((effective_size - extrusion) / (hex_width * 0.5)) + 1
+        
+        return (n_horizontal + n_vertical), spacing
     
 
 def calculate_cells(infill, extrusion, infill_area):
@@ -336,7 +339,29 @@ def calculate_cells(infill, extrusion, infill_area):
     
     return n
     
-
+def calculate_honeycomb_lines(components):
+    
+    """Calculate number of lines and spacing for honeycomb pattern"""
+    
+    infill = float(components['scaffold_infill_entry'].get()) / 100
+    size = float(components['scaffold_size_entry'].get())
+    extrusion = float(components['scaffold_noozle_entry'].get())
+    
+    # Honeycomb specific calculations
+    # The relationship between infill and line spacing is different for honeycomb
+    # This is an approximation - you may need to adjust based on your exact requirements
+    effective_spacing = (extrusion * (1 - infill)) / infill
+    
+    # Number of lines is approximately the size divided by the effective spacing
+    number_of_lines = round(size / effective_spacing)
+    
+    # Ensure we have at least 1 line
+    number_of_lines = max(1, number_of_lines)
+    
+    # Calculate actual spacing
+    delta = size / number_of_lines
+    
+    return number_of_lines, delta
     
     
     

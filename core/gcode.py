@@ -32,6 +32,23 @@ class GCODE:
         return gcode
     
     @staticmethod
+    def terminate(gcode, components, any_sweep_active = False):
+        
+        # End-of-print commands
+        if components['control_bedtemperature_var'].get() and not any_sweep_active:
+            gcode += "M800 ; Turn off bed heating\n"
+            
+        gcode += "G0 Z50; move bed to parking position\n"
+        gcode += "M400; wait for bed to reach parking position\n"
+        if components['terminate_operation_checkbox'].get():
+            gcode += "M84 ; Disable motors\n"
+        else:
+            gcode += "; Current operation not terminated to maintain conditions\n"
+            gcode += "; Don't forget to terminate operation manually when finished\n"
+            
+        return gcode
+            
+    @staticmethod
     def set_printhead(gcode, printhead = 0, z = None):
         gcode += f"T{printhead}" 
         if z is not None: gcode += f" Z{z:.2f}"
@@ -51,7 +68,7 @@ class GCODE:
         if temperature is None: return gcode
         else: 
             gcode += f"M801 S{float(temperature)} ; Set bed temperature\n" 
-            gcode += f"M400 ; wait for bed temperature setting to finish\n\n"
+            gcode += "M400 ; wait for bed temperature setting to finish\n\n"
             return gcode
         
     @staticmethod
@@ -251,7 +268,37 @@ class GCODE:
         return gcode
                 
     @classmethod
-    def generate_scaffold_stripes(cls, gcode, dimensions, origin,
+    def generate_striped_scaffold(cls, gcode, dimensions, origin,
+                                  delta, lines, height, speed = 1200, 
+                                  extrusion = 0.94):
+        
+        xi , yi = origin
+        
+        for index in range(lines - 1):
+            
+            xi -= delta
+            
+            # Move to next infill point without extruding
+            gcode = cls.move_to_position(gcode, x = xi, y = yi, wait = False,
+                                         precise = 1, speed = 3000)
+            
+            # Move to extrusion height lowering printhead
+            gcode = cls.move_to_position(gcode, z = height, speed = 3000, 
+                                         precise = 1, wait = False)
+            
+            # Extrude line
+            gcode = cls.move_to_position(gcode, x=xi, y=-yi, wait = False,
+                                         precise = 1, extrusion = extrusion,
+                                         speed = speed)
+            
+            # Raise the printhead
+            gcode = cls.move_to_position(gcode, z = height + 1, speed = 3000,
+                                         precise = 1, wait = False)
+            
+        return gcode         
+    
+    @classmethod
+    def generate_grid_scaffold(cls, gcode, dimensions, origin,
                                   delta, lines, height, speed = 1200, 
                                   extrusion = 0.94):
         
@@ -268,6 +315,24 @@ class GCODE:
                                          precise = 1, wait = False)
             
             gcode = cls.move_to_position(gcode, x=xi, y=-yi, wait = False,
+                                         precise = 1, extrusion = extrusion,
+                                         speed = speed)
+            
+            gcode = cls.move_to_position(gcode, z = height + 1, speed = 3000,
+                                         precise = 1, wait = False)
+        
+        xi , yi = origin
+        for index in range(lines - 1):
+            
+            yi -= delta
+            
+            gcode = cls.move_to_position(gcode, x = xi, y = yi, wait = False,
+                                         precise = 1, speed = 3000)
+            
+            gcode = cls.move_to_position(gcode, z = height, speed = 3000, 
+                                         precise = 1, wait = False)
+            
+            gcode = cls.move_to_position(gcode, x=-xi, y=yi, wait = False,
                                          precise = 1, extrusion = extrusion,
                                          speed = speed)
             
@@ -295,80 +360,8 @@ class GCODE:
         - printhead: Printhead number (default 0)
         - pressure: Extrusion pressure (default 50kPa)
         """
-        if gcode is None: gcode = ""
-        
-        # Calculate honeycomb parameters
-        hex_radius = cell_size / (3**0.5)  # Radius of circumscribed circle
-        hex_side = cell_size / (3**0.5)    # Side length
-        
-        # Initialize printer settings
-        gcode = GCODE.initialize()
-        gcode = GCODE.set_printhead(gcode, printhead)
-        gcode = GCODE.set_printhead_speed(gcode, print_speed)
-        gcode = GCODE.set_default_pressure(gcode, pressure, printhead)
-        
-        # Generate layers
-        z_pos = layer_height  # Start at first layer height
-        while z_pos <= size_z:
-            gcode += f"; LAYER at Z{z_pos:.2f}\n"
-            
-            # Move to start position
-            start_x = -size_x/2
-            start_y = -size_y/2
-            gcode = GCODE.move_to_position(gcode, x=start_x, y=start_y, z=z_pos, 
-                                           speed=print_speed)
-            
-            # Generate honeycomb pattern for this layer
-            # Offset every other row for hexagonal packing
-            row_offset = 0
-            y_pos = start_y
-            
-            while y_pos < size_y/2:
-                x_pos = start_x + (row_offset * hex_radius)
-                
-                while x_pos < size_x/2:
-                    # Generate one hexagon
-                    hex_points = []
-                    for i in range(6):
-                        angle_deg = 60 * i - 30
-                        angle_rad = np.pi / 180 * angle_deg
-                        x = x_pos + hex_radius * np.cos(angle_rad)
-                        y = y_pos + hex_radius * np.sin(angle_rad)
-                        hex_points.append((x, y))
-                    
-                    # Close the hexagon
-                    hex_points.append(hex_points[0])
-                    
-                    # Generate G-code for this hexagon
-                    for i, (x, y) in enumerate(hex_points):
-                        if i == 0:
-                            # Move to first point without extrusion
-                            gcode = GCODE.move_to_position(gcode, x=x, y=y, z=z_pos, 
-                                                         speed=print_speed)
-                            # Start extrusion
-                            gcode = GCODE.pneumatic_extrusion(gcode, printhead, 
-                                                            pressure, dwell=0.1)
-                        else:
-                            # Extrude to next point
-                            gcode = GCODE.move_to_position(gcode, x=x, y=y, z=z_pos, 
-                                                         speed=print_speed)
-                    
-                    # Stop extrusion
-                    gcode += f"M751 T{printhead} ; Stop extrusion\n"
-                    
-                    x_pos += 2 * hex_radius
-                
-                # Alternate row offset and increment y
-                row_offset = 1 - row_offset
-                y_pos += 1.5 * hex_side
-            
-            # Move to next layer
-            z_pos += layer_height
-        
-        # Finalize
-        gcode += "; Scaffold complete\n"
-        return gcode
     
+        return gcode
 
 def clean_printhead(gcode, printhead_number, speed, bed_movement_position,
                     pressure = 50, time = 1):
