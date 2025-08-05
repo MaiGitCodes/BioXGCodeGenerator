@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="bio_x_gcode_generator",
-    version="1.3.7",
+    version="1.3.8",
     author="Maria Teresa Alameda Felgueiras",
     description="G-code generator for Cellink BIOX bioprinters",
     long_description=open("README.md", encoding='utf-8').read(),
@@ -34,3 +34,4 @@ setup(
         ],
     },
 )
+
