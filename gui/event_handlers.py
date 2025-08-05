@@ -349,8 +349,8 @@ def on_tab_change(components):
 def preview_scaffold(components):
     try:
         pattern = components['scaffold_pattern_var'].get()
-        size_x = float(components['scaffold_size_entry'].get())
-        size_y = float(components['scaffold_size_entry'].get())
+        size_x = float(components['scaffold_size_x_entry'].get())
+        size_y = float(components['scaffold_size_y_entry'].get())
         infill = float(components['scaffold_infill_entry'].get())
         wall_thickness = float(components['scaffold_noozle_entry'].get())
         layer_height = float(components['scaffold_layer_height_entry'].get())

@@ -280,8 +280,8 @@ def generate_droplet_gcode(components):
     
 def calculate_geometric_parameters(components):
     
-    deltax = float(components['scaffold_size_entry'].get())
-    deltay = float(components['scaffold_size_entry'].get())
+    deltax = float(components['scaffold_size_x_entry'].get())
+    deltay = float(components['scaffold_size_y_entry'].get())
     extrusion = float(components['scaffold_noozle_entry'].get())
 
     
@@ -294,8 +294,8 @@ def calculate_geometric_parameters(components):
 
 def calculate_lines(components, pattern='striped'):
     infill = float(components['scaffold_infill_entry'].get())
-    deltax = float(components['scaffold_size_entry'].get())
-    deltay = float(components['scaffold_size_entry'].get())
+    deltax = float(components['scaffold_size_x_entry'].get())
+    deltay = float(components['scaffold_size_y_entry'].get())
     extrusion = float(components['scaffold_noozle_entry'].get())
     
     dimensions = (deltax - extrusion, deltay - extrusion)
@@ -351,7 +351,7 @@ def calculate_honeycomb_lines(components):
     """Calculate number of lines and spacing for honeycomb pattern"""
     
     infill = float(components['scaffold_infill_entry'].get()) / 100
-    size = float(components['scaffold_size_entry'].get())
+    size = float(components['scaffold_x_size_entry'].get())
     extrusion = float(components['scaffold_noozle_entry'].get())
     
     # Honeycomb specific calculations

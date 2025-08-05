@@ -122,17 +122,17 @@ def create_scaffold_tab(parent, components):
     )
     pattern_menu.grid(row=0, column=1, pady=5)
     
-    # Frame size
-    ctk.CTkLabel(pattern_frame, text="Perimeter Size (mm):").grid(row=1, column=0, padx=5, pady = 10)
-    size_entry = ctk.CTkEntry(pattern_frame, width=60)
-    size_entry.insert(0, "50")
-    size_entry.grid(row=1, column=1, padx=5, pady=10)
+    # Frame horizontal dimension
+    ctk.CTkLabel(pattern_frame, text="X (mm):").grid(row=1, column=0, padx=5, pady = 10)
+    size_x_entry = ctk.CTkEntry(pattern_frame, width=60)
+    size_x_entry.insert(0, "20")
+    size_x_entry.grid(row=1, column=1, padx=5, pady=10)
     
-    # # Y dimension
-    # ctk.CTkLabel(dim_frame, text="Y:").grid(row=0, column=2, padx=5)
-    # size_y_entry = ctk.CTkEntry(dim_frame, width=60)
-    # size_y_entry.insert(0, "50")
-    # size_y_entry.grid(row=0, column=3, padx=5)
+    # Y dimension
+    ctk.CTkLabel(pattern_frame, text="Y (mm):").grid(row=1, column=2, padx=5, pady = 10)
+    size_y_entry = ctk.CTkEntry(pattern_frame, width=60)
+    size_y_entry.insert(0, "20")
+    size_y_entry.grid(row=1, column=3, padx=5)
         
     # Cell Parameters
     ctk.CTkLabel(params_frame, text="General Parameters:").pack(pady=(10,0))
@@ -230,8 +230,8 @@ def create_scaffold_tab(parent, components):
 
     components.update({
         'scaffold_pattern_var': pattern_var,
-        'scaffold_size_entry': size_entry,
-        # 'scaffold_size_y_entry': size_y_entry,
+        'scaffold_size_x_entry': size_x_entry,
+        'scaffold_size_y_entry': size_y_entry,
         'scaffold_infill_entry': infill_entry,
         'scaffold_noozle_entry': noozle_entry,
         'scaffold_extrusion_entry': extrusion_entry,
