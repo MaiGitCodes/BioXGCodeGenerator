@@ -20,11 +20,15 @@ def create_main_window(root):
     components = {'root' : root}
     
     main_frame = ctk.CTkFrame(root)
-    main_frame.pack(expand = True, fill = 'both', padx = 5, pady = 5)
+    main_frame.pack(expand=True, fill='both', padx=5, pady=5)
+    main_frame.grid_rowconfigure(0, weight=1)  # tabview
+    main_frame.grid_rowconfigure(2, weight=0)  # bottom
+    main_frame.grid_columnconfigure(0, weight=1)
     
     # Create tab container
     tabview = ctk.CTkTabview(main_frame)
-    tabview.pack(expand = True, fill = 'both', padx = 5, pady = 5)
+    tabview.grid(row=0, column=0, sticky='nsew', padx=5, pady=(5, 0))
+
     components['tabview'] = tabview
     
     # Add tabs
@@ -41,12 +45,26 @@ def create_main_window(root):
     create_scaffold_tab(tab_scafold, components)
         
     # Add bottom frame for shared elements (G-code display + buttons)
-    bottom_frame = ctk.CTkFrame(main_frame)
-    bottom_frame.pack(side='bottom', fill='x', padx=5, pady=5)
+    resize_bar = VerticalResizeDivider(main_frame, tabview, None)
+    resize_bar.grid(row=1, column=0, sticky='ew')
+    
+    bottom_frame = ctk.CTkFrame(main_frame, height=200)
+    bottom_frame.grid(row=2, column=0, sticky='nsew', padx=5, pady=(0, 5))
+    bottom_frame.pack_propagate(False)
+    
+    resize_bar.bottom_widget = bottom_frame  # assign dynamically after creation
+
     components['bottom_frame'] = bottom_frame
+    components['resize_bar'] = resize_bar
     
     # Create shared UI inside bottom frame
     create_shared_elements(bottom_frame, components)
+    
+    def reset_gcode_panel():
+        bottom_frame.configure(height=200)
+        bottom_frame.pack_propagate(False)
+    
+    components['reset_layout_button'].configure(command=reset_gcode_panel)    
     
     return components
 
@@ -602,6 +620,10 @@ def create_action_buttons(parent, row=None):
 
     dark_mode_button = ctk.CTkButton(frame, text="Toggle Dark Mode")
     dark_mode_button.pack(side=ctk.LEFT, padx=5)
+    
+    # Reset Layout Button
+    reset_layout_button = ctk.CTkButton(frame, text="Reset Layout")
+    reset_layout_button.pack(side=ctk.LEFT, padx=5)
 
     generate_button = ctk.CTkButton(frame, text="Generate G-code")
     generate_button.pack(side=ctk.RIGHT, padx=5)
@@ -616,7 +638,44 @@ def create_action_buttons(parent, row=None):
 
     return {
         'dark_mode_button': dark_mode_button,
+        'reset_layout_button': reset_layout_button,
         'generate_button': generate_button,
         'export_button': export_button,
         'copy_button': copy_button
     }
+
+
+class VerticalResizeDivider(ctk.CTkFrame):
+
+    """Custom vertical resize divider for CTkFrame"""
+
+    def __init__(self, parent, top_widget, bottom_widget, min_height=100, max_height=600, **kwargs):
+        super().__init__(parent, height = 5, cursor = 'sb_v_double_arrow', **kwargs)
+        self.top_widget = top_widget
+        self.bottom_widget = bottom_widget
+        self.min_height = min_height
+        self.max_height = max_height
+        self.configure(fg_color='gray')
+        self.inner_line = ctk.CTkFrame(self, height=1, fg_color='darkgray')
+        self.inner_line.pack(expand=True, fill='x', pady=(6,6)) # center the line
+        
+        self.bind("<ButtonPress-1>", self.start_resize)
+        self.bind("<B1-Motion>", self.perform_resize)
+        self.inner_line.bind("<ButtonPress-1>", self.start_resize)
+        self.inner_line.bind("<B1-Motion>", self.perform_resize)
+
+    def start_resize(self, event):
+        """ Start resizing on mouse click """
+        self.start_y = event.y
+    
+    def perform_resize(self, event):
+        """ Perform resizing based on mouse movement """
+
+        dy = event.y_root -self.winfo_rooty()
+        new_height = self.bottom_widget.winfo_height() - dy
+        new_height = max(self.min_height, min(self.max_height, new_height))
+
+        # Resize bottom frame
+        self.bottom_widget.configure(height=new_height)
+        self.bottom_widget.pack_propagate(False)
+        self.bottom_widget.update_idletasks()
