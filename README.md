@@ -1,5 +1,5 @@
 # BIOX G-Code Generator
-# v1.3.8
+# v1.3.9
 # Author: Maria Teresa Alameda Felgueiras
 
 A specialized application for generating G-code scripts for Cellink BIOX bioprinters, supporting multiple printhead types and well plate configurations.
@@ -41,6 +41,7 @@ A specialized application for generating G-code scripts for Cellink BIOX bioprin
 
 - 📁 **Output Options**:
   - Generate G-code preview
+  - Resizable G-code preview panel
   - Copy to clipboard
   - Export to `.gcode` file
 
@@ -71,3 +72,4 @@ pip install -r requirements.txt
 # To execute the application, for example in Spyder:
 import BioXGCodeGenerator as bgc
 bgc.main()
+
