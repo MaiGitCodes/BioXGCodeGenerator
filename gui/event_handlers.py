@@ -487,7 +487,7 @@ def plot_grid_infill(ax, components, cmap = 'plasma', steps_per_segment = 5):
     
     xi , yi = origin
     
-    extrusion = float(components['scaffold_extrusion_entry'].get())
+    extrusion = 0.5
     layer_height = float(components['scaffold_layer_height_entry'].get())
     size_z = float(components['layer_number_entry'].get()) * layer_height
     

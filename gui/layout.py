@@ -153,11 +153,17 @@ def create_scaffold_tab(parent, components):
     noozle_entry.insert(0, "0.41")
     noozle_entry.grid(row=1, column=1, padx=5)
     
-    # Extrusion parameter (ammount of extruded material deposited in a movement)
-    ctk.CTkLabel(cell_frame, text="Extrusion (mL):").grid(row=2, column=0, padx=5)
-    extrusion_entry = ctk.CTkEntry(cell_frame, width=60)
-    extrusion_entry.insert(0, "1")
-    extrusion_entry.grid(row=2, column=1, padx=5)
+    # # Extrusion parameter (ammount of extruded material deposited in a movement)
+    # ctk.CTkLabel(cell_frame, text="Extrusion (mL):").grid(row=2, column=0, padx=5)
+    # extrusion_entry = ctk.CTkEntry(cell_frame, width=60)
+    # extrusion_entry.insert(0, "1")
+    # extrusion_entry.grid(row=2, column=1, padx=5)
+    
+    # Scaffold pressure (ammount of extruded material deposited in a movement)
+    ctk.CTkLabel(cell_frame, text="Pressure (kPa):").grid(row=2, column=0, padx=5)
+    scaffold_pressure_entry = ctk.CTkEntry(cell_frame, width=60)
+    scaffold_pressure_entry.insert(0, "200")
+    scaffold_pressure_entry.grid(row=2, column=1, padx=5)
     
     # Layer Height
     ctk.CTkLabel(cell_frame, text="Layer Height (mm):").grid(row=0, column=2, padx=5)
@@ -234,7 +240,8 @@ def create_scaffold_tab(parent, components):
         'scaffold_size_y_entry': size_y_entry,
         'scaffold_infill_entry': infill_entry,
         'scaffold_noozle_entry': noozle_entry,
-        'scaffold_extrusion_entry': extrusion_entry,
+        # 'scaffold_extrusion_entry': extrusion_entry,
+        'scaffold_pressure_entry': scaffold_pressure_entry,
         'scaffold_layer_height_entry': layer_height_entry,
         'layer_number_entry': layer_number_entry,
         'scaffold_speed_entry': speed_entry,

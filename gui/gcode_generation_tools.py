@@ -18,9 +18,10 @@ def generate_scaffold_gcode(components):
     
     printhead_type = components['printhead_type'].get()
     printhead_number = int(components['printhead_number'].get())
+    extrusion = 1
     
     pattern = components['scaffold_pattern_var'].get()
-    extrusion = float(components['scaffold_extrusion_entry'].get())
+    pressure = float(components['scaffold_pressure_entry'].get())
     height = float(components['scaffold_layer_height_entry'].get())
     speed = float(components['scaffold_speed_entry'].get())
     layers = int(components['layer_number_entry'].get())
@@ -31,6 +32,8 @@ def generate_scaffold_gcode(components):
     gcode = GC.initialize(printhead_type_value = printhead_type, pattern = pattern)
     
     gcode = GC.set_printhead(gcode, printhead_number, z = height)
+    
+    gcode = GC.set_default_pressure(gcode, pressure)
         
     for layer in range(layers):
         
